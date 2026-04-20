@@ -1,0 +1,345 @@
+Build a production-quality frontend demo for OmniClaw in Replit.
+
+PROJECT GOAL
+Create a world-class single-page demo dashboard that showcases agent-to-agent commerce on Arc Testnet using OmniClaw as the buyer-side payment control layer.
+
+This is NOT a generic payment dashboard and NOT a Stripe clone.
+This is a premium live demo console showing:
+- a Buyer Agent
+- a Seller / Vendor surface
+- negotiation / event stream
+- payment authorization and policy checks
+- x402 exact settlement on Arc Testnet
+- proof / transaction receipt / ArcScan link
+
+The product story:
+OmniClaw is the control layer for agent money.
+The buyer agent should NOT have unrestricted wallet power.
+Instead, it executes payments through OmniClaw policy control.
+The seller side exposes paid services/endpoints.
+The system shows that payment is policy-controlled, routed properly, and settled on Arc.
+
+GROUND TRUTH TO RESPECT
+Use these concepts as the product source of truth:
+- OmniClaw = control layer for agent money
+- Buyer side runs through Financial Policy Engine
+- Seller side can expose paid services/endpoints
+- x402 exact settlement on Arc Testnet
+- ArcScan proof transaction / transaction details
+- Browser-friendly showcase, not text-heavy docs UI
+- One shared dashboard, not two separate apps
+
+DO NOT invent fake blockchain mechanics.
+DO NOT invent unsupported payment rails.
+DO NOT turn this into a merchant analytics SaaS.
+DO NOT clutter the app with random charts or dead features.
+Everything on screen must support the story of agent commerce.
+
+TECH STACK
+Use:
+- React + TypeScript
+- Vite
+- Tailwind CSS
+- shadcn/ui-style component patterns
+- Framer Motion for tasteful animation
+- lucide-react icons
+- clean reusable components
+- strong folder structure
+- mock data with clean state management
+
+If possible in Replit:
+- organize code cleanly
+- no giant monolithic App.tsx
+- no messy inline styles
+- no poor spacing
+- no low-quality gradients
+
+VISUAL DIRECTION
+The UI should feel like:
+- premium
+- technical
+- sharp
+- investor-demo ready
+- hackathon-winning quality
+- believable as a real startup product
+
+Design language:
+- dark professional theme
+- elite typography
+- oversized headline / hero word-art style in the intro section
+- strong but tasteful gradients
+- crisp cards
+- soft glows, subtle depth
+- enterprise-level spacing
+- modern “agent operating console” feel
+- cinematic but not childish
+- polished hover states
+- refined transitions
+- strong hierarchy
+
+IMPORTANT:
+Use “big cool word-art” tastefully:
+- large hero line like:
+  “Autonomous Commerce. Controlled.”
+  or
+  “Where Agents Negotiate, Authorize, and Settle.”
+- use large typography blocks, premium gradient text, subtle spotlight background
+- keep the product looking serious, not flashy or gaming-like
+
+COLOR SYSTEM
+Use a professional dark palette:
+- background: deep charcoal / near-black
+- surfaces: layered slate / graphite
+- accents: electric blue + violet + teal used sparingly
+- status colors for success / warning / pending
+- no oversaturated neon rainbow look
+- no childish colors
+
+APP STRUCTURE
+Build ONE shared dashboard with these sections:
+
+1. HERO / INTRO BANNER
+Top section with:
+- OmniClaw branding
+- one powerful headline
+- short subheadline
+- CTA buttons like:
+  “Run Demo”
+  “Inspect Flow”
+- quick badges:
+  “Policy-Controlled”
+  “Arc Testnet”
+  “x402 Exact”
+  “Agent-to-Agent Commerce”
+
+2. MAIN DEMO CONSOLE
+The main part of the app should be a 3-column layout:
+
+LEFT COLUMN: BUYER AGENT PANEL
+Show:
+- buyer agent name
+- status
+- objective
+- spend cap
+- wallet balance
+- allowed network
+- policy state
+- current action
+- controls:
+  - inspect route
+  - simulate approval
+  - execute payment
+
+CENTER COLUMN: LIVE NEGOTIATION / EVENT FEED
+This is the heart of the demo.
+Show a polished event stream / conversation between buyer and seller/system.
+Example events:
+- Buyer wants to purchase a premium service
+- Seller advertises offer
+- Buyer checks spend policy
+- OmniClaw validates constraints
+- x402 payment path selected
+- payment submitted
+- settlement confirmed
+- service unlocked
+
+This should feel alive and premium.
+Use event cards, system logs, status indicators, timestamps, and subtle animations.
+
+RIGHT COLUMN: SELLER / VENDOR PANEL
+Show:
+- seller service card(s)
+- selected product/service
+- price in testnet USDC
+- paid endpoint status
+- fulfillment status
+- seller wallet / vendor identity
+- “unlock after payment” state
+
+Make this side feel like a premium vendor kiosk / API product panel.
+
+3. PAYMENT EXECUTION RAIL
+Below the 3-column layout, add a horizontal multi-step progress rail:
+- Intent Created
+- Policy Checked
+- Recipient Verified
+- Payment Route Selected
+- Arc Settlement Submitted
+- Confirmed
+- Fulfilled
+
+This should animate step-by-step when the demo runs.
+
+4. TRANSACTION / PROOF DRAWER
+Add a right-side or modal-style expandable panel showing:
+- recipient endpoint
+- amount
+- network = Arc Testnet
+- payment rail = x402 exact
+- tx hash
+- status
+- policy outcome
+- ArcScan button
+- settlement metadata
+
+5. PRODUCT FOOTER / EXPLAINER
+A small polished section explaining in one line:
+“OmniClaw lets agents pay through policy, not raw wallet authority.”
+
+PRIMARY DEMO FLOW
+Implement a polished mockable flow with a “Run Demo” button.
+
+Flow:
+1. Buyer Agent needs a premium service
+2. Seller advertises one paid service
+3. Buyer inspects the route
+4. OmniClaw policy checks run
+5. Payment intent is approved
+6. Arc x402 exact settlement is simulated
+7. Transaction proof appears
+8. Seller fulfillment unlocks
+
+Use staged state transitions with timers or event-driven state so the experience feels live.
+
+USE THIS DEMO SCENARIO
+Primary scenario:
+Buyer Agent purchases a premium market intelligence / data service from a seller endpoint.
+
+Sample service cards:
+- Prime Market Scan — 0.25 USDC
+- Risk Oracle Brief — 0.15 USDC
+- Settlement Receipt Kit — 0.10 USDC
+
+These mirror the marketplace style and make the demo believable.
+
+COMPONENTS TO BUILD
+Create reusable components such as:
+- AppShell
+- HeroBanner
+- StatusBadge
+- BuyerAgentCard
+- SellerPanel
+- ServiceCard
+- EventFeed
+- EventRow
+- PolicyCheckCard
+- ExecutionTimeline
+- TransactionDrawer
+- ProofCard
+- MetricPill
+- DemoControls
+- BackgroundGlow
+- AnimatedGrid
+- SectionHeader
+
+INTERACTION REQUIREMENTS
+- Clicking “Run Demo” triggers the entire flow
+- Clicking “Inspect Route” opens route/payment details
+- Clicking a seller service selects that service
+- Event feed updates progressively
+- Execution timeline updates progressively
+- Transaction drawer updates progressively
+- Final state clearly shows success + proof
+
+MOTION / ANIMATION
+Use Framer Motion tastefully:
+- fade/slide card entrances
+- animated progress states
+- glowing active step in the payment timeline
+- subtle emphasis on successful settlement
+- panel transitions
+- no excessive bouncing or gimmicks
+
+COPY STYLE
+Use premium, concise product copy.
+Examples:
+- “Autonomous commerce with policy at the core.”
+- “Agents execute. OmniClaw governs.”
+- “Every payment path is inspected before funds move.”
+- “Exact settlement on Arc Testnet.”
+
+Avoid cringe AI hype language.
+
+DATA MODEL
+Create clean mock data/types:
+- Agent
+- SellerService
+- DemoEvent
+- TransactionState
+- PolicyCheck
+- ProofReceipt
+
+Example state machine:
+idle
+→ selected_service
+→ inspecting
+→ policy_check
+→ approved
+→ settling
+→ confirmed
+→ fulfilled
+
+CODE QUALITY REQUIREMENTS
+- TypeScript everywhere
+- strong component separation
+- readable naming
+- no dead code
+- no broken responsiveness
+- no layout collapse on tablet/laptop
+- polished empty/default states
+- accessible button contrast
+- nice loading and transitional states
+
+RESPONSIVENESS
+Desktop-first, but should degrade well on smaller screens.
+On mobile/tablet:
+- stack columns cleanly
+- keep event feed readable
+- preserve premium look
+
+DELIVERABLES
+Generate all code needed for a working Replit frontend demo:
+- file structure
+- package dependencies
+- main app
+- reusable components
+- mock data
+- animation logic
+- styles
+- polished layout
+- responsive behavior
+
+Also include:
+- a clean README with setup instructions
+- comments only where useful
+- a short section in README explaining the product story
+
+IMPORTANT PRODUCT POSITIONING
+This app should feel like:
+- OmniClaw as the control layer for agent payments
+- not ArcPay 2.0
+- not a checkout page
+- not a wallet dashboard
+- not an analytics app
+
+It is an agent commerce console.
+
+FINAL STANDARD
+Build this as if it will be judged by hackathon judges, startup founders, and top frontend engineers.
+The result should feel premium enough that a judge immediately understands:
+1. what OmniClaw does
+2. why policy-controlled agent payments matter
+3. how Arc settlement fits in
+4. why this is more than a mock wallet transfer
+
+Make it the best-looking and cleanest frontend possible within Replit constraints.
+No half-finished output.
+No placeholders that weaken the story.
+No ugly defaults.
+No generic template feel.
+
+After generating the code, also provide:
+1. the final folder structure
+2. how to run it in Replit
+3. which files to edit later if we connect a real OmniClaw backend
+4. where to plug in real ArcScan links and real seller endpoint responses
