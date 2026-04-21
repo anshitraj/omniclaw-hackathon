@@ -1,0 +1,58 @@
+﻿<svg width="1200" height="560" viewBox="0 0 1200 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="560" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1020"/>
+      <stop offset="1" stop-color="#151A2E"/>
+    </linearGradient>
+    <linearGradient id="line" x1="130" y1="280" x2="1070" y2="280" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6EE7B7"/>
+      <stop offset="1" stop-color="#60A5FA"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="560" rx="28" fill="url(#bg)"/>
+  <text x="56" y="64" fill="#E5E7EB" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700">OmniClaw Gateway-First Payment Architecture</text>
+  <text x="56" y="98" fill="#9CA3AF" font-family="Inter, Arial, sans-serif" font-size="18">Buyer Agent → Policy Engine → Circle Gateway Rail → Seller Gateway Balance → Arc Settlement Proof</text>
+
+  <line x1="130" y1="280" x2="1070" y2="280" stroke="url(#line)" stroke-width="6" stroke-linecap="round"/>
+
+  <g transform="translate(110,195)">
+    <rect width="180" height="170" rx="18" fill="#1F2937" stroke="#374151"/>
+    <text x="90" y="42" text-anchor="middle" fill="#C4B5FD" font-family="Inter" font-size="18" font-weight="700">Buyer Agent</text>
+    <text x="90" y="74" text-anchor="middle" fill="#9CA3AF" font-family="Inter" font-size="13">Selects paid action</text>
+    <text x="90" y="96" text-anchor="middle" fill="#9CA3AF" font-family="Inter" font-size="13">Uses buyer gateway</text>
+    <text x="90" y="118" text-anchor="middle" fill="#9CA3AF" font-family="Inter" font-size="13">balance</text>
+  </g>
+
+  <g transform="translate(330,195)">
+    <rect width="180" height="170" rx="18" fill="#1F2937" stroke="#374151"/>
+    <text x="90" y="42" text-anchor="middle" fill="#5EEAD4" font-family="Inter" font-size="18" font-weight="700">Policy Engine</text>
+    <text x="90" y="74" text-anchor="middle" fill="#9CA3AF" font-family="Inter" font-size="13">Budget + allowlist</text>
+    <text x="90" y="96" text-anchor="middle" fill="#9CA3AF" font-family="Inter" font-size="13">checks</text>
+    <text x="90" y="118" text-anchor="middle" fill="#9CA3AF" font-family="Inter" font-size="13">before payment</text>
+  </g>
+
+  <g transform="translate(550,195)">
+    <rect width="180" height="170" rx="18" fill="#1F2937" stroke="#374151"/>
+    <text x="90" y="42" text-anchor="middle" fill="#86EFAC" font-family="Inter" font-size="18" font-weight="700">Circle Gateway</text>
+    <text x="90" y="74" text-anchor="middle" fill="#9CA3AF" font-family="Inter" font-size="13">Primary rail</text>
+    <text x="90" y="96" text-anchor="middle" fill="#9CA3AF" font-family="Inter" font-size="13">Nanopayment path</text>
+    <text x="90" y="118" text-anchor="middle" fill="#9CA3AF" font-family="Inter" font-size="13">per action</text>
+  </g>
+
+  <g transform="translate(770,195)">
+    <rect width="180" height="170" rx="18" fill="#1F2937" stroke="#374151"/>
+    <text x="90" y="42" text-anchor="middle" fill="#FDE68A" font-family="Inter" font-size="18" font-weight="700">Seller Surface</text>
+    <text x="90" y="74" text-anchor="middle" fill="#9CA3AF" font-family="Inter" font-size="13">Gateway balance</text>
+    <text x="90" y="96" text-anchor="middle" fill="#9CA3AF" font-family="Inter" font-size="13">credit / payout route</text>
+    <text x="90" y="118" text-anchor="middle" fill="#9CA3AF" font-family="Inter" font-size="13">then fulfill service</text>
+  </g>
+
+  <g transform="translate(990,195)">
+    <rect width="100" height="170" rx="18" fill="#1F2937" stroke="#374151"/>
+    <text x="50" y="42" text-anchor="middle" fill="#93C5FD" font-family="Inter" font-size="16" font-weight="700">Arc</text>
+    <text x="50" y="68" text-anchor="middle" fill="#9CA3AF" font-family="Inter" font-size="12">Settlement</text>
+    <text x="50" y="86" text-anchor="middle" fill="#9CA3AF" font-family="Inter" font-size="12">Proof</text>
+  </g>
+
+  <text x="56" y="510" fill="#6B7280" font-family="Inter" font-size="14">Fallback rails remain available: legacy direct transfer and demo mode.</text>
+</svg>

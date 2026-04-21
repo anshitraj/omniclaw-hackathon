@@ -1,0 +1,98 @@
+﻿'use client';
+
+import { motion } from 'framer-motion';
+import {
+  Bot,
+  Shield,
+  Radio,
+  Store,
+  Layers,
+  ArrowDown,
+} from 'lucide-react';
+
+const layers = [
+  {
+    icon: Bot,
+    title: 'Buyer Agent',
+    desc: 'Autonomous buyer agent selects paid actions and requests execution under policy constraints.',
+    color: 'var(--color-accent-violet)',
+  },
+  {
+    icon: Shield,
+    title: 'OmniClaw Policy Engine',
+    desc: 'Spend policy validates budget caps, recipient allowlists, and per-action controls before any payment can route.',
+    color: 'var(--color-accent-teal)',
+  },
+  {
+    icon: Radio,
+    title: 'Circle Gateway / Nanopayments',
+    desc: 'Primary payment rail: buyer Gateway balance to seller Gateway balance/payout route with programmable per-action settlement.',
+    color: 'var(--color-accent-green)',
+  },
+  {
+    icon: Store,
+    title: 'Seller Vendor Surface',
+    desc: 'Vendor endpoint receives Gateway-side credit and unlocks fulfillment only after confirmed settlement.',
+    color: 'var(--color-accent-amber)',
+  },
+  {
+    icon: Layers,
+    title: 'Arc Settlement / Proof',
+    desc: 'Arc Testnet provides settlement confirmation and proof links for each completed payment action.',
+    color: 'var(--color-accent-blue)',
+  },
+];
+
+export default function ArchitectureSection() {
+  return (
+    <section id="architecture" className="py-24 px-6">
+      <div className="max-w-4xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-3xl sm:text-4xl font-bold text-[var(--color-text-primary)] mb-4">
+            Gateway-First Architecture
+          </h2>
+          <p className="text-[var(--color-text-secondary)] max-w-xl mx-auto">
+            OmniClaw coordinates policy-controlled buyer and seller agents through Circle Gateway Nanopayments, with Arc as settlement and proof.
+          </p>
+        </motion.div>
+
+        <div className="space-y-1">
+          {layers.map((layer, i) => (
+            <motion.div
+              key={layer.title}
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.08 }}
+            >
+              <div className="flex items-start gap-4 p-5 rounded-xl bg-[var(--color-bg-secondary)] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-default)] transition-colors group">
+                <div
+                  className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
+                  style={{ backgroundColor: `${layer.color}15` }}
+                >
+                  <layer.icon className="w-5 h-5" style={{ color: layer.color }} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-[var(--color-text-primary)] mb-1">{layer.title}</h3>
+                  <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">{layer.desc}</p>
+                </div>
+                <div className="flex-shrink-0 text-xs font-mono text-[var(--color-text-muted)] mt-1">L{i + 1}</div>
+              </div>
+              {i < layers.length - 1 && (
+                <div className="flex justify-center py-1">
+                  <ArrowDown className="w-4 h-4 text-[var(--color-border-default)]" />
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
