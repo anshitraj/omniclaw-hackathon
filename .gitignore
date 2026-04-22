@@ -34,3 +34,11 @@ _archive/
 # misc
 .cache/
 coverage/
+
+# local/project docs not meant for GitHub
+AGENTS.md
+CLAUDE.md
+DESIGN.md
+MIGRATION_TWO_WALLET.md
+PROGRESS.md
+*-SKILL.md
