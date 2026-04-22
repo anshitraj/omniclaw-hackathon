@@ -1,9 +1,15 @@
-﻿'use client';
+'use client';
 
 import { useReducer, useCallback, useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Receipt, Info, Wallet, RefreshCw, Copy, Check } from 'lucide-react';
+import {
+  ArrowLeft,
+  Receipt,
+  Info,
+  RefreshCw,
+  Network,
+} from 'lucide-react';
 import Link from 'next/link';
 
 import BuyerPanel from '@/components/console/BuyerPanel';
@@ -12,9 +18,14 @@ import EventFeed from '@/components/console/EventFeed';
 import PaymentRail from '@/components/console/PaymentRail';
 import ReceiptDrawer from '@/components/transaction/ReceiptDrawer';
 import IntegrationStatusPanel from '@/components/console/IntegrationStatusPanel';
+import WalletChip from '@/components/shared/WalletChip';
+import { ModeBadge, deriveAppMode } from '@/components/shared/ModeBadge';
+import { RailBadge } from '@/components/shared/StatusPill';
+
 import { demoReducer, createInitialState } from '@/lib/demo/store';
 import { generateDemoEvents, DEMO_SERVICES } from '@/lib/demo/data';
 import { truncateHash } from '@/lib/utils';
+
 import type {
   SellerService,
   IntegrationHealth,
@@ -78,13 +89,13 @@ async function runLiveSequence(
         id: `evt_settle_${Date.now()}`,
         timestamp: new Date().toISOString(),
         source: 'settlement',
-        title: 'Gateway Settlement Routing Captured',
-        description: 'Buyer-to-seller gateway settlement recorded with rail, token, and destination details.',
+        title: 'Seller Settlement Accepted',
+        description: 'Gateway batch settlement accepted with Arc proof and buyer/seller routing metadata.',
         state: 'fulfilled',
         metadata: {
           buyerGateway: receipt.fromAddress ? truncateHash(receipt.fromAddress, 6) : 'n/a',
           sellerGateway: receipt.toAddress ? truncateHash(receipt.toAddress, 6) : 'n/a',
-          rail: String(receipt.settlementMetadata?.paymentRail || 'gateway'),
+          rail: String(receipt.settlementMetadata?.paymentRail || 'Circle Gateway'),
           token: receipt.currency,
           amount: String(receipt.amount),
           txHash: receipt.txHash ? truncateHash(receipt.txHash, 6) : 'n/a',
@@ -95,67 +106,6 @@ async function runLiveSequence(
   }
 
   dispatch({ type: 'SET_RUNNING', running: false });
-}
-
-function WalletChip({
-  label,
-  address,
-  usdc,
-  eurc,
-  loading,
-  warning,
-  copyId,
-}: {
-  label: string;
-  address?: string | null;
-  usdc?: number;
-  eurc?: number;
-  loading: boolean;
-  warning?: boolean;
-  copyId: string;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  const copyAddress = useCallback(async () => {
-    if (!address) return;
-    try {
-      await navigator.clipboard.writeText(address);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1400);
-    } catch {
-      // no-op
-    }
-  }, [address]);
-
-  return (
-    <div
-      className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono bg-[var(--color-bg-primary)] border border-[var(--color-border-subtle)]"
-      title={address || `${label} not configured`}
-    >
-      <div className={`w-1.5 h-1.5 rounded-full ${warning ? 'bg-[var(--color-accent-red)]' : 'bg-[var(--color-accent-green)]'}`} />
-      <Wallet className="w-3 h-3 text-[var(--color-text-muted)]" />
-      <span className="text-[var(--color-text-secondary)]">{label}</span>
-      <span className="text-[var(--color-border-subtle)]">|</span>
-      <span className="text-[var(--color-text-secondary)]">{address ? truncateHash(address, 5) : 'n/a'}</span>
-      <span className="text-[var(--color-border-subtle)]">|</span>
-      <span className="text-[var(--color-accent-green)]">{loading ? '...' : (usdc || 0).toFixed(2)} USDC</span>
-      <span className="text-[var(--color-accent-blue)]">{loading ? '...' : (eurc || 0).toFixed(2)} EURC</span>
-      <button
-        id={copyId}
-        onClick={copyAddress}
-        disabled={!address}
-        className="ml-1 p-0.5 rounded hover:bg-[var(--color-bg-hover)] disabled:opacity-40"
-        title={address ? `Copy full ${label} address` : `${label} address not available`}
-        aria-label={`Copy ${label} address`}
-      >
-        {copied ? (
-          <Check className="w-3 h-3 text-[var(--color-accent-green)]" />
-        ) : (
-          <Copy className="w-3 h-3 text-[var(--color-text-muted)]" />
-        )}
-      </button>
-    </div>
-  );
 }
 
 function ConsoleContent() {
@@ -213,7 +163,7 @@ function ConsoleContent() {
           }
         }
       } catch {
-        // keep demo state
+        /* keep demo state */
       }
     }
 
@@ -258,75 +208,140 @@ function ConsoleContent() {
     }
   }, [state.receipt, state.transactionState]);
 
-  const modeBadge = state.mode === 'integration' ? 'LIVE' : 'DEMO';
-  const modeBadgeColor = state.mode === 'integration' ? 'var(--color-accent-green)' : 'var(--color-accent-violet)';
+  const appMode = deriveAppMode(state.integrationHealth, walletOverview);
+  const activeRail = state.integrationHealth.activePaymentRail || 'demo';
 
   const architectureWarning = walletOverview?.architecture.liveArchitectureValid
     ? undefined
     : walletOverview?.architecture.warnings.find((w) => w.includes('same wallet'));
 
+  const buyerConfigured = Boolean(walletOverview?.buyer?.configured ?? walletOverview?.buyer?.address);
+  const sellerConfigured = Boolean(walletOverview?.seller?.configured ?? walletOverview?.seller?.address);
+
   return (
-    <div className="h-screen flex flex-col bg-[var(--color-bg-primary)]">
-      <header className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)]">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="p-2 rounded-lg hover:bg-[var(--color-bg-hover)] transition-colors">
-            <ArrowLeft className="w-4 h-4 text-[var(--color-text-muted)]" />
+    <div className="h-screen flex flex-col" style={{ background: 'var(--nb-dark)' }}>
+
+      {/* ── Neobrutalist Navbar ─────────────────────────────────────────── */}
+      <header className="nb-navbar flex-shrink-0">
+        {/* Left: Back + Brand */}
+        <div className="flex items-stretch gap-0">
+          <Link
+            href="/"
+            id="nav-back-btn"
+            className="flex items-center justify-center w-9 h-9 border-r-2 hover:bg-[rgba(255,255,255,0.04)] transition-colors"
+            style={{ borderColor: 'rgba(255,255,255,0.1)', color: 'var(--color-text-muted)' }}
+            aria-label="Back to landing page"
+          >
+            <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full animate-pulse-slow" style={{ backgroundColor: modeBadgeColor }} />
-            <span className="text-sm font-semibold text-[var(--color-text-primary)]">OmniClaw Console</span>
+
+          {/* Brand block with yellow left-bar */}
+          <div
+            className="flex items-center gap-3 pl-4 pr-6 h-full border-r-2"
+            style={{ borderColor: 'rgba(255,255,255,0.1)' }}
+          >
+            <div className="flex flex-col">
+              <span
+                className="text-[13px] font-black uppercase tracking-widest leading-none"
+                style={{ color: '#FDC800', letterSpacing: '0.12em' }}
+              >
+                OmniClaw
+              </span>
+              <span
+                className="text-[9px] font-mono font-semibold uppercase tracking-widest"
+                style={{ color: 'var(--color-text-muted)', letterSpacing: '0.14em' }}
+              >
+                Console v1.0
+              </span>
+            </div>
           </div>
-          <span className="text-xs px-2 py-0.5 rounded-full font-mono" style={{ backgroundColor: `${modeBadgeColor}15`, color: modeBadgeColor }}>
-            {modeBadge}
-          </span>
+
+          {/* Status badges */}
+          <div className="flex items-center gap-2 pl-4">
+            <ModeBadge mode={appMode} rail={activeRail as 'gateway' | 'direct' | 'demo'} showTooltip />
+            <div className="hidden sm:flex">
+              <RailBadge rail={activeRail} />
+            </div>
+            <span
+              className="hidden md:inline-flex items-center gap-1.5 nb-badge nb-badge-indigo"
+            >
+              <Network className="w-2.5 h-2.5" />
+              Arc Testnet
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Right: Wallets + Receipt + Refresh — fills remaining space, refresh flush right */}
+        <div className="flex-1 flex items-center justify-end">
           {state.receipt && (
             <button
+              id="nav-view-receipt-btn"
               onClick={() => setReceiptOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--color-accent-green)]/10 text-[var(--color-accent-green)] border border-[var(--color-accent-green)]/20 hover:bg-[var(--color-accent-green)]/15 transition-colors"
+              className="btn-secondary flex items-center gap-1.5 text-[10px] py-1.5 px-3 mr-3"
             >
               <Receipt className="w-3 h-3" />
-              View Receipt
+              Settlement Proof
             </button>
           )}
 
-          <WalletChip
-            label="Buyer Gateway Balance"
-            address={walletOverview?.buyer.address}
-            usdc={walletOverview?.buyer.usdcBalance}
-            eurc={walletOverview?.buyer.eurcBalance}
-            loading={walletLoading}
-            warning={!walletOverview?.architecture.liveArchitectureValid}
-            copyId="copy-buyer-wallet-chip"
-          />
-          <WalletChip
-            label="Seller Gateway Balance"
-            address={walletOverview?.seller.address}
-            usdc={walletOverview?.seller.usdcBalance}
-            eurc={walletOverview?.seller.eurcBalance}
-            loading={walletLoading}
-            warning={!walletOverview?.architecture.liveArchitectureValid}
-            copyId="copy-seller-wallet-chip"
-          />
+          <div className="flex items-stretch h-full divide-x-2" style={{ divideColor: 'rgba(255,255,255,0.08)' }}>
+            <div className="flex items-center px-3">
+              <WalletChip
+                label="Buyer"
+                actor="buyer"
+                address={walletOverview?.buyer?.address}
+                usdc={walletOverview?.buyer?.usdcBalance}
+                eurc={walletOverview?.buyer?.eurcBalance}
+                loading={walletLoading}
+                warning={!walletOverview?.architecture?.liveArchitectureValid && Boolean(walletOverview)}
+                warningText={architectureWarning}
+                configured={buyerConfigured}
+                copyId="copy-buyer-wallet-chip"
+              />
+            </div>
 
-          <button
-            onClick={fetchWalletData}
-            className="p-2 rounded-lg hover:bg-[var(--color-bg-hover)] transition-colors"
-            title="Refresh wallet balances and history"
-          >
-            <RefreshCw className="w-4 h-4 text-[var(--color-text-muted)]" />
-          </button>
+            <div className="flex items-center px-3">
+              <WalletChip
+                label="Seller"
+                actor="seller"
+                address={walletOverview?.seller?.address}
+                usdc={walletOverview?.seller?.usdcBalance}
+                eurc={walletOverview?.seller?.eurcBalance}
+                loading={walletLoading}
+                warning={!walletOverview?.architecture?.liveArchitectureValid && Boolean(walletOverview)}
+                warningText={architectureWarning}
+                configured={sellerConfigured}
+                copyId="copy-seller-wallet-chip"
+              />
+            </div>
+
+            {/* Refresh — flush to right edge, full height */}
+            <button
+              id="nav-refresh-btn"
+              onClick={fetchWalletData}
+              className="flex items-center justify-center w-11 hover:bg-[rgba(255,255,255,0.05)] transition-colors"
+              style={{ color: 'var(--color-text-muted)' }}
+              title="Refresh wallet balances"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${walletLoading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="flex-shrink-0 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)]">
-        <PaymentRail currentState={state.transactionState} />
+      {/* ── Payment Rail ───────────────────────────────────────────────── */}
+      <div className="flex-shrink-0 border-b border-[rgba(255,255,255,0.07)]">
+        <PaymentRail currentState={state.transactionState} mode={appMode} />
       </div>
 
+      {/* ── Main 3-column layout ───────────────────────────────────────── */}
       <div className="flex-1 flex min-h-0">
-        <div className="w-80 flex-shrink-0 border-r border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)] overflow-hidden flex flex-col">
+
+        {/* Left: Buyer Agent Panel */}
+        <div
+          className="w-80 flex-shrink-0 border-r-2 flex flex-col overflow-hidden"
+          style={{ background: 'var(--nb-dark-2)', borderColor: 'rgba(255,255,255,0.08)' }}
+        >
           <div className="flex-1 overflow-hidden">
             <BuyerPanel
               agent={state.agent}
@@ -340,16 +355,26 @@ function ConsoleContent() {
               history={buyerHistory}
               onRefreshWalletData={fetchWalletData}
               architectureWarning={architectureWarning}
+              appMode={appMode}
+              policyResult={state.policyResult}
             />
           </div>
           <IntegrationStatusPanel health={state.integrationHealth} />
         </div>
 
-        <div className="flex-1 min-w-0 bg-[var(--color-bg-primary)] overflow-hidden">
-          <EventFeed events={state.events} />
+        {/* Center: Event Feed */}
+        <div
+          className="flex-1 min-w-0 overflow-hidden"
+          style={{ background: 'var(--nb-dark)' }}
+        >
+          <EventFeed events={state.events} appMode={appMode} />
         </div>
 
-        <div className="w-96 flex-shrink-0 border-l border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)] overflow-hidden">
+        {/* Right: Vendor / Seller Panel */}
+        <div
+          className="w-96 flex-shrink-0 border-l-2 overflow-hidden"
+          style={{ background: 'var(--nb-dark-2)', borderColor: 'rgba(255,255,255,0.08)' }}
+        >
           <SellerPanel
             services={DEMO_SERVICES}
             selectedService={state.selectedService}
@@ -358,21 +383,28 @@ function ConsoleContent() {
             walletSummary={walletOverview?.seller || null}
             history={sellerHistory}
             onRefreshWalletData={fetchWalletData}
+            appMode={appMode}
           />
         </div>
       </div>
 
+      {/* ── Error Bar ─────────────────────────────────────────────────── */}
       {state.error && (
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="flex-shrink-0 flex items-center gap-2 px-6 py-3 bg-[var(--color-accent-red)]/10 border-t border-[var(--color-accent-red)]/20"
+          className="flex-shrink-0 flex items-center gap-2 px-6 py-3 border-t"
+          style={{
+            background: 'rgba(239,68,68,0.06)',
+            borderColor: 'rgba(239,68,68,0.2)',
+          }}
         >
           <Info className="w-4 h-4 text-[var(--color-accent-red)]" />
           <span className="text-xs text-[var(--color-accent-red)]">{state.error}</span>
         </motion.div>
       )}
 
+      {/* ── Receipt Drawer ────────────────────────────────────────────── */}
       <ReceiptDrawer receipt={state.receipt} isOpen={receiptOpen} onClose={() => setReceiptOpen(false)} />
     </div>
   );
@@ -382,10 +414,18 @@ export default function ConsolePage() {
   return (
     <Suspense
       fallback={
-        <div className="h-screen flex items-center justify-center bg-[var(--color-bg-primary)]">
+        <div
+          className="h-screen flex items-center justify-center"
+          style={{ background: 'var(--color-bg-primary)' }}
+        >
           <div className="flex flex-col items-center gap-4">
-            <div className="w-8 h-8 border-2 border-[var(--color-accent-violet)] border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-[var(--color-text-muted)]">Loading console...</span>
+            <div
+              className="w-9 h-9 rounded-full border-2 border-t-transparent animate-spin"
+              style={{ borderColor: '#9fe870', borderTopColor: 'transparent' }}
+            />
+            <span className="text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
+              Loading OmniClaw Console…
+            </span>
           </div>
         </div>
       }
@@ -394,4 +434,3 @@ export default function ConsolePage() {
     </Suspense>
   );
 }
-

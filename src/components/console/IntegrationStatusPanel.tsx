@@ -122,12 +122,18 @@ export default function IntegrationStatusPanel({ health }: IntegrationStatusPane
                   <StatusIcon value={!!health.gatewayConfigured} />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">Direct transfer configured</span>
+                  <span className="text-[var(--color-text-muted)]">Legacy direct mode configured</span>
                   <StatusIcon value={!!health.directTransferConfigured} />
                 </div>
                 <Row
                   label="Active Payment Rail"
-                  value={health.activePaymentRail ? String(health.activePaymentRail) : 'demo'}
+                  value={
+                    health.activePaymentRail === 'gateway'
+                      ? 'Circle Gateway'
+                      : health.activePaymentRail === 'direct'
+                        ? 'Legacy Direct Mode'
+                        : 'demo'
+                  }
                 />
               </div>
 

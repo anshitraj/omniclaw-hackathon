@@ -1,81 +1,158 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Check, Loader2 } from 'lucide-react';
 import type { TransactionState } from '@/types';
-import { TRANSACTION_STATES, STATE_LABELS } from '@/types';
 
 interface PaymentRailProps {
   currentState: TransactionState;
+  mode?: 'live' | 'demo' | 'legacy';
 }
 
-export default function PaymentRail({ currentState }: PaymentRailProps) {
-  // Exclude idle and error from the rail
-  const steps = TRANSACTION_STATES.filter((s) => s !== 'idle');
-  const currentIndex = steps.indexOf(currentState as typeof steps[number]);
+/* ── Step definitions ──────────────────────────────────────────────────────── */
 
+const STEPS: {
+  state: TransactionState;
+  label: string;
+  layer: string;
+  layerColor: string;
+}[] = [
+  { state: 'idle',            label: 'IDLE',      layer: 'CONTROL',  layerColor: '#566680' },
+  { state: 'inspecting',      label: 'INSPECT',   layer: 'CONTROL',  layerColor: '#566680' },
+  { state: 'policy_checking', label: 'POLICY',    layer: 'OMNICLAW', layerColor: '#FDC800' },
+  { state: 'approved',        label: 'APPROVED',  layer: 'OMNICLAW', layerColor: '#FDC800' },
+  { state: 'executing',       label: 'EXECUTE',   layer: 'CIRCLE',   layerColor: '#432DD7' },
+  { state: 'confirming',      label: 'CONFIRM',   layer: 'CIRCLE',   layerColor: '#432DD7' },
+  { state: 'arc_settling',    label: 'SETTLE',    layer: 'ARC',      layerColor: '#0D9488' },
+  { state: 'fulfilled',       label: 'DONE',      layer: 'ARC',      layerColor: '#0D9488' },
+];
+
+const ORDER = STEPS.map((s) => s.state);
+
+function status(
+  step: TransactionState,
+  current: TransactionState
+): 'done' | 'active' | 'pending' | 'error' {
+  if (current === 'failed' || current === 'rejected') return 'error';
+  const ci = ORDER.indexOf(current);
+  const si = ORDER.indexOf(step);
+  if (si < 0) return 'pending';
+  if (si < ci) return 'done';
+  if (si === ci) return 'active';
+  return 'pending';
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+export default function PaymentRail({ currentState, mode = 'demo' }: PaymentRailProps) {
   return (
-    <div className="px-6 py-4">
-      <div className="flex items-center justify-between relative">
-        {/* Background line */}
-        <div className="absolute top-4 left-0 right-0 h-px bg-[var(--color-border-subtle)]" />
+    <div
+      className="flex items-stretch w-full"
+      style={{
+        height: 54,
+        background: 'var(--nb-dark-2)',
+      }}
+    >
+      {/* Steps — flex-1 each so they tile evenly edge-to-edge */}
+      {STEPS.map((step, i) => {
+        const st = status(step.state, currentState);
+        const isActive  = st === 'active';
+        const isDone    = st === 'done';
+        const isError   = st === 'error';
 
-        {/* Progress line */}
-        <motion.div
-          className="absolute top-4 left-0 h-px bg-[var(--color-accent-violet)]"
-          initial={{ width: '0%' }}
-          animate={{
-            width: currentIndex >= 0 ? `${(currentIndex / (steps.length - 1)) * 100}%` : '0%',
-          }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          style={{
-            boxShadow: '0 0 8px var(--color-accent-violet)',
-          }}
-        />
+        const color = step.layerColor;
+        const labelColor = isActive
+          ? color
+          : isDone
+            ? 'rgba(255,255,255,0.55)'
+            : isError
+              ? '#EF4444'
+              : 'rgba(255,255,255,0.22)';
 
-        {steps.map((step, i) => {
-          const isCompleted = currentIndex >= 0 && i < currentIndex;
-          const isActive = i === currentIndex;
-          const isPending = i > currentIndex || currentIndex < 0;
+        const numColor = isActive
+          ? color
+          : isDone
+            ? 'rgba(255,255,255,0.3)'
+            : 'rgba(255,255,255,0.13)';
 
-          return (
-            <div key={step} className="relative flex flex-col items-center z-10" style={{ flex: 1 }}>
-              {/* Circle */}
-              <motion.div
-                className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors duration-300 ${
-                  isCompleted
-                    ? 'bg-[var(--color-accent-violet)] border-[var(--color-accent-violet)]'
-                    : isActive
-                      ? 'bg-[var(--color-bg-elevated)] border-[var(--color-accent-violet)] glow-violet'
-                      : 'bg-[var(--color-bg-secondary)] border-[var(--color-border-subtle)]'
-                }`}
-                animate={isActive ? { scale: [1, 1.1, 1] } : {}}
-                transition={{ duration: 1.5, repeat: Infinity }}
+        return (
+          <div key={step.state} className="flex items-stretch flex-1 min-w-0">
+            {/* Step cell fills its flex share */}
+            <div
+              className="flex-1 flex flex-col items-center justify-center select-none cursor-default px-1"
+              style={{
+                borderBottom: isActive
+                  ? `3px solid ${color}`
+                  : isDone
+                    ? '3px solid rgba(255,255,255,0.12)'
+                    : '3px solid transparent',
+                background: isActive ? `${color}0D` : 'transparent',
+                borderRight: i < STEPS.length - 1
+                  ? '1px solid rgba(255,255,255,0.06)'
+                  : 'none',
+              }}
+            >
+              {/* Number */}
+              <span
+                className="text-[9px] font-mono font-bold tabular-nums leading-none mb-0.5"
+                style={{ color: numColor }}
               >
-                {isCompleted ? (
-                  <Check className="w-3.5 h-3.5 text-white" />
-                ) : isActive ? (
-                  <Loader2 className="w-3.5 h-3.5 text-[var(--color-accent-violet)] animate-spin" />
-                ) : (
-                  <div className="w-2 h-2 rounded-full bg-[var(--color-border-default)]" />
-                )}
-              </motion.div>
+                {isDone ? '✓' : isError ? '✗' : String(i + 1).padStart(2, '0')}
+              </span>
 
               {/* Label */}
-              <span
-                className={`mt-2 text-[10px] font-medium text-center leading-tight max-w-[70px] ${
-                  isCompleted
-                    ? 'text-[var(--color-accent-violet)]'
-                    : isActive
-                      ? 'text-[var(--color-text-primary)]'
-                      : 'text-[var(--color-text-muted)]'
-                }`}
+              <motion.span
+                className="text-[11px] font-black uppercase leading-none"
+                style={{
+                  color: labelColor,
+                  letterSpacing: '0.06em',
+                  fontFamily: 'var(--font-mono)',
+                }}
+                animate={isActive ? { opacity: [1, 0.6, 1] } : {}}
+                transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
               >
-                {STATE_LABELS[step]}
+                {step.label}
+              </motion.span>
+
+              {/* Layer */}
+              <span
+                className="text-[8px] font-mono font-semibold uppercase leading-none mt-0.5"
+                style={{
+                  color: isActive ? `${color}88` : 'rgba(255,255,255,0.12)',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {step.layer}
               </span>
             </div>
-          );
-        })}
+          </div>
+        );
+      })}
+
+      {/* Mode pill — flush right, fixed width */}
+      <div
+        className="flex items-center px-4 border-l flex-shrink-0 self-stretch"
+        style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+      >
+        <div className="flex items-center gap-1.5">
+          <span
+            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+            style={{
+              background: mode === 'live' ? '#4ADE80' : '#FDC800',
+              boxShadow: mode === 'live'
+                ? '0 0 6px #4ADE8066'
+                : '0 0 6px #FDC80066',
+            }}
+          />
+          <span
+            className="text-[10px] font-mono font-bold uppercase"
+            style={{
+              color: mode === 'live' ? '#4ADE80' : '#FDC800',
+              letterSpacing: '0.1em',
+            }}
+          >
+            {mode === 'live' ? 'Live' : 'Demo'}
+          </span>
+        </div>
       </div>
     </div>
   );

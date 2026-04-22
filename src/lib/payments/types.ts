@@ -18,6 +18,8 @@ export interface PaymentExecutionResult {
   legacyDirectTransfer: boolean;
   buyerFundingSource: string;
   sellerSettlementDestination: string;
+  gatewayBalanceSource: 'API' | 'On-chain Fallback' | 'Demo';
+  sellerSettlementMode: 'Gateway Batch Settlement' | 'Legacy Direct Mode' | 'Demo Settlement';
 }
 
 export interface PaymentRuntimeContext {

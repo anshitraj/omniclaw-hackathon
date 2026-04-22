@@ -7,6 +7,7 @@ import {
   type CircleBalanceInfo,
 } from './base-client';
 import { getWalletHistoryForActor } from './history';
+import { getOnChainGatewayUsdcBalance } from '@/lib/integrations/arc/balances';
 
 const KNOWN_BALANCE_SYMBOLS = ['USDC', 'EURC'];
 
@@ -56,8 +57,12 @@ export async function getWalletSummaryForActor(actor: WalletActor): Promise<Wall
     blockchain: cfg.blockchain,
     status: 'unavailable',
     balances: mapBalancesBySymbol([]),
+    apiUsdcBalance: 0,
+    onChainUsdcBalance: 0,
     usdcBalance: 0,
     eurcBalance: 0,
+    gatewayBalanceSource: 'Demo',
+    gatewayBalanceSyncStatus: 'unavailable',
     recentTxCount: 0,
     lastUpdated: now,
     warnings: [],
@@ -67,6 +72,7 @@ export async function getWalletSummaryForActor(actor: WalletActor): Promise<Wall
     return {
       ...base,
       status: 'mock_mode',
+      gatewayBalanceSource: 'Demo',
       warnings: ['Circle API key is not configured for this actor.'],
     };
   }
@@ -78,7 +84,24 @@ export async function getWalletSummaryForActor(actor: WalletActor): Promise<Wall
 
     const balancesRaw = walletId ? await getWalletBalancesForActor(actor, walletId) : [];
     const balances = mapBalancesBySymbol(balancesRaw);
+    const apiUsdcBalance = balances.USDC?.amount || 0;
+    const onChainUsdcBalance = address ? await getOnChainGatewayUsdcBalance(address).catch(() => null) : null;
+    const hasOnChain = typeof onChainUsdcBalance === 'number';
+    const balancesMatch = hasOnChain ? Math.abs(apiUsdcBalance - onChainUsdcBalance) < 0.000001 : true;
+    const gatewayBalanceSource: WalletSummary['gatewayBalanceSource'] = hasOnChain
+      ? balancesMatch
+        ? 'API'
+        : 'On-chain Fallback'
+      : 'API';
+    const gatewayBalanceSyncStatus: WalletSummary['gatewayBalanceSyncStatus'] = hasOnChain
+      ? balancesMatch
+        ? 'in_sync'
+        : 'api_lagging'
+      : 'unavailable';
     const history = await getWalletHistoryForActor(actor, 20);
+    const warnings = gatewayBalanceSyncStatus === 'api_lagging'
+      ? ['Circle Gateway API balance differs from on-chain Gateway balance. Using on-chain fallback.']
+      : [];
 
     return {
       ...base,
@@ -89,10 +112,15 @@ export async function getWalletSummaryForActor(actor: WalletActor): Promise<Wall
       blockchain: wallet?.blockchain || cfg.blockchain,
       status: wallet?.state || 'connected',
       balances,
-      usdcBalance: balances.USDC?.amount || 0,
+      apiUsdcBalance,
+      onChainUsdcBalance: onChainUsdcBalance ?? apiUsdcBalance,
+      usdcBalance: gatewayBalanceSource === 'On-chain Fallback' && hasOnChain ? onChainUsdcBalance : apiUsdcBalance,
       eurcBalance: balances.EURC?.amount || 0,
+      gatewayBalanceSource,
+      gatewayBalanceSyncStatus,
       recentTxCount: history.length,
       lastUpdated: new Date().toISOString(),
+      warnings,
     };
   } catch (error) {
     return {

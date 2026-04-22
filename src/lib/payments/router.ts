@@ -32,6 +32,8 @@ export async function executePaymentByRail(
     legacyDirectTransfer: false,
     buyerFundingSource: 'Demo Gateway Balance',
     sellerSettlementDestination: 'Demo Seller Gateway Balance',
+    gatewayBalanceSource: 'Demo',
+    sellerSettlementMode: 'Demo Settlement',
   };
 }
 

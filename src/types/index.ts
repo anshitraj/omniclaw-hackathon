@@ -34,8 +34,8 @@ export const STATE_LABELS: Record<TransactionState, string> = {
   selected: 'Selected',
   inspecting: 'Inspected',
   policy_checking: 'Policy Check',
-  approved: 'Approved',
-  wallet_ready: 'Buyer Gateway Ready',
+  approved: 'Policy Check',
+  wallet_ready: 'Gateway Ready',
   routing: 'Nanopayment Route',
   settling: 'Arc Settlement',
   confirmed: 'Seller Credited',
@@ -270,8 +270,12 @@ export interface WalletSummary {
   blockchain: string;
   status: string;
   balances: Record<string, WalletBalance>;
+  apiUsdcBalance?: number;
+  onChainUsdcBalance?: number;
   usdcBalance: number;
   eurcBalance: number;
+  gatewayBalanceSource?: 'API' | 'On-chain Fallback' | 'Demo';
+  gatewayBalanceSyncStatus?: 'in_sync' | 'api_lagging' | 'unavailable';
   recentTxCount: number;
   lastUpdated: string;
   warnings?: string[];

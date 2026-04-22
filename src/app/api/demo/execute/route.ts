@@ -6,6 +6,7 @@ import {
   isCircleConfigured,
   isEntitySecretConfigured,
 } from '@/lib/integrations/circle/client';
+import { getWalletSummaryForActor } from '@/lib/integrations/circle/wallet-utils';
 import { executePaymentByRail, resolvePaymentRuntimeContext, getActivePaymentRail } from '@/lib/payments/router';
 
 export async function POST(req: Request) {
@@ -56,6 +57,9 @@ export async function POST(req: Request) {
       );
 
       const explorerHash = settlement.isPending ? null : settlement.txHash;
+      const buyerSummary = await getWalletSummaryForActor('buyer');
+      const gatewayBalanceSource = buyerSummary.gatewayBalanceSource || settlement.gatewayBalanceSource;
+      const isLegacyDirect = settlement.rail === 'direct';
 
       const receipt = {
         id: `rcpt_${Date.now()}`,
@@ -66,7 +70,7 @@ export async function POST(req: Request) {
         amount: service.price,
         currency: service.currency,
         network: 'Arc Testnet',
-        route: settlement.rail === 'gateway' ? 'Circle Gateway Rail' : 'Legacy Direct Transfer Rail',
+        route: isLegacyDirect ? 'Legacy Direct Mode' : 'Circle Gateway Nanopayment Rail',
         status: settlement.isPending ? 'pending' : 'confirmed',
         proofLink: explorerHash ? `https://testnet.arcscan.app/tx/${explorerHash}` : null,
         arcScanUrl: explorerHash ? `https://testnet.arcscan.app/tx/${explorerHash}` : null,
@@ -74,11 +78,13 @@ export async function POST(req: Request) {
         timestamp: new Date().toISOString(),
         policyDecisionSummary: 'All policy checks passed. Buyer agent authorized under OmniClaw FPE v1.0.',
         settlementMetadata: {
-          paymentRail: settlement.rail,
+          paymentRail: isLegacyDirect ? 'Legacy Direct Mode' : 'Circle Gateway',
+          gatewayBalanceSource,
           buyerFundingSource: settlement.buyerFundingSource,
           sellerSettlementDestination: settlement.sellerSettlementDestination,
-          settlementLayer: 'Arc Testnet',
-          valueLayer: service.currency,
+          settlementLayer: 'Arc',
+          valueLayer: 'USDC',
+          sellerSettlementMode: settlement.sellerSettlementMode,
           legacyDirectTransfer: String(settlement.legacyDirectTransfer),
           blockNumber: settlement.blockNumber,
           gasUsed: settlement.gasUsed,
@@ -117,12 +123,16 @@ export async function POST(req: Request) {
   const fallback = generateDemoReceipt(service);
   const receipt = {
     ...fallback,
-    route: 'Circle Gateway Rail (Demo Fallback)',
+    route: 'Circle Gateway Nanopayment Rail (Demo Fallback)',
     settlementMetadata: {
       ...fallback.settlementMetadata,
-      paymentRail: 'demo',
-      buyerFundingSource: 'Demo Gateway Balance',
-      sellerSettlementDestination: 'Demo Seller Gateway Balance',
+      paymentRail: 'Circle Gateway',
+      gatewayBalanceSource: 'Demo',
+      buyerFundingSource: 'Demo Gateway Nanopayment Balance',
+      sellerSettlementDestination: 'Demo Seller Gateway Settlement Route',
+      settlementLayer: 'Arc',
+      valueLayer: 'USDC',
+      sellerSettlementMode: 'Gateway Batch Settlement',
       legacyDirectTransfer: 'false',
     },
     fromAddress: buyerCfg.walletAddress || fallback.fromAddress,

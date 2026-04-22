@@ -72,5 +72,7 @@ export async function executeDirectSettlement(input: PaymentExecutionInput): Pro
     legacyDirectTransfer: true,
     buyerFundingSource: 'Circle W3S Direct Wallet Transfer (Legacy)',
     sellerSettlementDestination: 'Seller Wallet Direct Receive (Legacy)',
+    gatewayBalanceSource: 'API',
+    sellerSettlementMode: 'Legacy Direct Mode',
   };
 }

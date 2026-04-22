@@ -12,7 +12,9 @@ export async function executeGatewaySettlement(input: PaymentExecutionInput): Pr
     rail: 'gateway',
     // Under-the-hood is still direct transfer today, so keep this explicit.
     legacyDirectTransfer: true,
-    buyerFundingSource: 'Circle Gateway Balance',
-    sellerSettlementDestination: 'Gateway Balance / Payout Route',
+    buyerFundingSource: 'Circle Gateway Nanopayment Balance',
+    sellerSettlementDestination: 'Gateway Batch Settlement Route',
+    gatewayBalanceSource: 'API',
+    sellerSettlementMode: 'Gateway Batch Settlement',
   };
 }
