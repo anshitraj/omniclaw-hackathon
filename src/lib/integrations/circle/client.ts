@@ -1,5 +1,5 @@
 ﻿import crypto from 'crypto';
-import type { WalletStatus, CombinedWalletOverview } from '@/types';
+import type { WalletStatus } from '@/types';
 import {
   CIRCLE_BASE_URL,
   authHeadersForActor,
@@ -17,7 +17,6 @@ import {
 } from './base-client';
 import { getWalletSummaryForActor } from './wallet-utils';
 import { getBuyerWalletHistory } from './buyer-client';
-import { getSellerWalletHistory } from './seller-client';
 
 const CIRCLE_API_KEY = process.env.CIRCLE_API_KEY || process.env.CIRCLE_BUYER_API_KEY || process.env.CIRCLE_SELLER_API_KEY;
 const CIRCLE_ENTITY_SECRET =
@@ -128,8 +127,8 @@ export async function getWalletBalances(walletId: string): Promise<CircleBalance
 
 export async function getWalletStatus(walletId?: string): Promise<WalletStatus> {
   if (!isCircleConfigured()) {
-    const { DEMO_WALLET } = await import('@/lib/demo/data');
-    return DEMO_WALLET;
+    const { SEED_WALLET } = await import('@/lib/seed/data');
+    return { ...SEED_WALLET, id: walletId || SEED_WALLET.id };
   }
 
   const summary = await getWalletSummaryForActor('buyer');
@@ -220,32 +219,8 @@ export async function getCircleConnectionSummary(): Promise<CircleConnectionSumm
   };
 }
 
-export async function getCombinedWalletOverview(): Promise<CombinedWalletOverview> {
-  const architecture = evaluateLiveArchitecture();
-  const buyer = await getWalletSummaryForActor('buyer');
-  const seller = await getWalletSummaryForActor('seller');
-
-  const mode = architecture.liveArchitectureValid
-    ? 'live'
-    : buyer.legacyMode && seller.legacyMode
-      ? 'legacy'
-      : 'demo';
-
-  return {
-    mode,
-    architecture,
-    buyer,
-    seller,
-    lastUpdated: new Date().toISOString(),
-  };
-}
-
 export async function getBuyerHistory(limit = 20) {
   return getBuyerWalletHistory(limit);
-}
-
-export async function getSellerHistory(limit = 20) {
-  return getSellerWalletHistory(limit);
 }
 
 export { evaluateLiveArchitecture, getCircleActorConfig, createTransferFromBuyerToSeller };

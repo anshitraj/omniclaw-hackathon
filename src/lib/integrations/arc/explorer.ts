@@ -26,8 +26,8 @@ export function getArcScanBlockUrl(block: string): string {
 
 /**
  * Fetch transaction proof from Arc Testnet.
- * In demo mode: returns mock proof data.
- * In live mode: queries Arc RPC for tx receipt.
+ * If Arc RPC is unavailable: returns an unavailable placeholder.
+ * If Arc RPC is configured: queries Arc RPC for tx receipt.
  */
 export async function getTransactionProof(txHash: string): Promise<{
   confirmed: boolean;
@@ -37,10 +37,10 @@ export async function getTransactionProof(txHash: string): Promise<{
 }> {
   if (!isArcConfigured()) {
     return {
-      confirmed: true,
-      blockNumber: '1284573',
-      gasUsed: '21000',
-      status: 'success',
+      confirmed: false,
+      blockNumber: 'n/a',
+      gasUsed: 'n/a',
+      status: 'unavailable',
     };
   }
 

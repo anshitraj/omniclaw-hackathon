@@ -1,4 +1,4 @@
-﻿import crypto from 'crypto';
+import crypto from 'crypto';
 import type { LiveArchitectureHealth, WalletActor } from '@/types';
 
 export const CIRCLE_BASE_URL = 'https://api.circle.com';
@@ -267,3 +267,4 @@ export async function createTransferFromBuyerToSeller(params: {
 
   return circlePost('buyer', '/v1/w3s/developer/transactions/transfer', transferBody);
 }
+

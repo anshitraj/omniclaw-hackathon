@@ -8,9 +8,8 @@ export type TransactionState =
   | 'selected'
   | 'inspecting'
   | 'policy_checking'
-  | 'approved'
   | 'wallet_ready'
-  | 'routing'
+  | 'paying'
   | 'settling'
   | 'confirmed'
   | 'fulfilled'
@@ -19,11 +18,9 @@ export type TransactionState =
 export const TRANSACTION_STATES: TransactionState[] = [
   'idle',
   'selected',
-  'inspecting',
   'policy_checking',
-  'approved',
   'wallet_ready',
-  'routing',
+  'paying',
   'settling',
   'confirmed',
   'fulfilled',
@@ -32,13 +29,12 @@ export const TRANSACTION_STATES: TransactionState[] = [
 export const STATE_LABELS: Record<TransactionState, string> = {
   idle: 'Idle',
   selected: 'Selected',
-  inspecting: 'Inspected',
+  inspecting: 'Inspecting',
   policy_checking: 'Policy Check',
-  approved: 'Policy Check',
   wallet_ready: 'Gateway Ready',
-  routing: 'Nanopayment Route',
+  paying: 'Executing Pay',
   settling: 'Arc Settlement',
-  confirmed: 'Seller Credited',
+  confirmed: 'Confirmed',
   fulfilled: 'Fulfilled',
   error: 'Error',
 };
@@ -55,7 +51,7 @@ export interface Agent {
   trustLevel: 'high' | 'medium' | 'low';
   riskState: 'nominal' | 'elevated' | 'critical';
   currentStep: string;
-  budgetCap: number;
+  budgetCap: number | null;
   budgetUsed: number;
   allowedRecipients: string[];
   policyStatus: 'active' | 'suspended' | 'unconfigured';
@@ -74,13 +70,15 @@ export interface SellerService {
   availability: 'online' | 'degraded' | 'offline';
   paywallStatus: 'active' | 'bypassed' | 'pending';
   endpoint: string;
+  requestMethod: 'GET' | 'POST';
+  requestBody?: string;
   category: string;
 }
 
-// --- Demo Event ---
+// --- Timeline Event ---
 export type EventSource = 'system' | 'buyer' | 'seller' | 'policy' | 'settlement' | 'wallet';
 
-export interface DemoEvent {
+export interface TimelineEvent {
   id: string;
   timestamp: string;
   source: EventSource;
@@ -90,6 +88,8 @@ export interface DemoEvent {
   metadata?: Record<string, string>;
   icon?: string;
 }
+
+export type DemoEvent = TimelineEvent;
 
 // --- Policy Check Result ---
 export interface PolicyCheckResult {
@@ -151,10 +151,11 @@ export interface TransactionReceipt {
   status: 'pending' | 'confirmed' | 'failed' | 'simulated';
   proofLink: string | null;
   arcScanUrl: string | null;
-  isDemoTx?: boolean;
   timestamp: string;
   policyDecisionSummary: string;
   settlementMetadata: Record<string, string>;
+  apiResponse?: unknown;
+  payEnvelope?: Record<string, unknown>;
   blockNumber?: string;
   gasUsed?: string;
   fromAddress?: string;
@@ -162,30 +163,16 @@ export interface TransactionReceipt {
   senderLabel?: string;
   recipientLabel?: string;
   direction?: 'sent' | 'received';
-  liveArchitectureValid?: boolean;
-  architectureWarning?: string;
 }
 
 // --- Integration Health ---
 export interface IntegrationHealth {
   omniclaw: OmniClawIntegrationStatus;
-  circle: IntegrationStatus;
   arc: IntegrationStatus;
   ai: IntegrationStatus;
-  buyerConfigured?: boolean;
-  sellerConfigured?: boolean;
   buyerWalletAddress?: string | null;
-  sellerWalletAddress?: string | null;
-  buyerSellerDistinct?: boolean;
-  liveArchitectureValid?: boolean;
-  buyerBalancesAvailable?: boolean;
-  sellerBalancesAvailable?: boolean;
-  buyerHistoryAvailable?: boolean;
-  sellerHistoryAvailable?: boolean;
-  eurcSupported?: boolean;
   gatewayConfigured?: boolean;
-  directTransferConfigured?: boolean;
-  activePaymentRail?: 'gateway' | 'direct' | 'demo';
+  activePaymentRail?: 'gateway' | 'direct';
   warnings?: string[];
 }
 
@@ -204,12 +191,12 @@ export interface IntegrationStatus {
   details?: string;
 }
 
-// --- Demo State ---
-export interface DemoState {
-  mode: 'demo' | 'integration';
+// --- App State ---
+export interface AppState {
+  mode: 'integration';
   transactionState: TransactionState;
   selectedService: SellerService | null;
-  events: DemoEvent[];
+  events: TimelineEvent[];
   agent: Agent;
   wallet: WalletStatus;
   policyResult: PolicyCheckResult | null;
@@ -221,7 +208,7 @@ export interface DemoState {
 }
 
 // --- AI Provider ---
-export type AIProvider = 'gemini' | 'featherless' | 'aimlapi' | 'mock';
+export type AIProvider = 'featherless' | 'mock';
 
 export interface AIReasoningResult {
   provider: AIProvider;
@@ -273,10 +260,12 @@ export interface WalletSummary {
   apiUsdcBalance?: number;
   onChainUsdcBalance?: number;
   usdcBalance: number;
-  eurcBalance: number;
-  gatewayBalanceSource?: 'API' | 'On-chain Fallback' | 'Demo';
+  gatewayBalance?: number;
+  gatewayOnchainBalance?: number;
+  gatewayBalanceSource?: 'API' | 'On-chain Fallback' | 'Unavailable';
   gatewayBalanceSyncStatus?: 'in_sync' | 'api_lagging' | 'unavailable';
   recentTxCount: number;
+  budgetCap?: number | null;
   lastUpdated: string;
   warnings?: string[];
 }
@@ -293,10 +282,3 @@ export interface LiveArchitectureHealth {
   warnings: string[];
 }
 
-export interface CombinedWalletOverview {
-  mode: 'live' | 'legacy' | 'demo';
-  architecture: LiveArchitectureHealth;
-  buyer: WalletSummary;
-  seller: WalletSummary;
-  lastUpdated: string;
-}

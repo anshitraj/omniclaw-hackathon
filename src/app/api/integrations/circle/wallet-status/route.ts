@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   if (!isCircleConfigured()) {
     return NextResponse.json({
       success: false,
-      error: 'Circle integration not configured. Set CIRCLE_API_KEY in .env.local.',
+      error: 'Circle integration not configured. Set CIRCLE_BUYER_API_KEY in .env.local.',
       timestamp: new Date().toISOString(),
     }, { status: 503 });
   }
