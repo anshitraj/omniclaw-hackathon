@@ -1,4 +1,5 @@
-﻿import type { WalletActor, WalletHistoryItem } from '@/types';
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { WalletActor, WalletHistoryItem } from '@/types';
 import { circleGet, getCircleActorConfig, getWalletBalancesForActor, isCircleConfiguredForActor } from './base-client';
 
 const ARC_EXPLORER_URL = process.env.ARC_EXPLORER_URL || 'https://testnet.arcscan.app';

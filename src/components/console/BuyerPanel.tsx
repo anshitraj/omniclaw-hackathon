@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot,
-  Shield,
   Wallet,
   Target,
   ShieldCheck,
@@ -44,8 +43,6 @@ interface BuyerPanelProps {
 export default function BuyerPanel({
   agent,
   transactionState,
-  onInspect,
-  onPolicyCheck,
   onExecute,
   onReset,
   isRunning,
@@ -58,18 +55,6 @@ export default function BuyerPanel({
 }: BuyerPanelProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [policyOpen, setPolicyOpen] = useState(false);
-
-  // Auto-open policy accordion when result arrives
-  useEffect(() => {
-    if (policyResult) setPolicyOpen(true);
-  }, [policyResult]);
-
-  const trustColor =
-    agent.trustLevel === 'high'
-      ? '#9fe870'
-      : agent.trustLevel === 'medium'
-        ? '#f59e0b'
-        : '#ef4444';
 
   const trustVariant =
     agent.trustLevel === 'high'
@@ -504,4 +489,3 @@ export default function BuyerPanel({
     </motion.div>
   );
 }
-

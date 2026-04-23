@@ -11,19 +11,20 @@ import {
   Play,
 } from 'lucide-react';
 import Link from 'next/link';
+import { HACKATHON_PROOF } from '@/lib/demo/data';
 
 const techStack = [
   { label: 'Arc Testnet', icon: Globe, color: '#0D9488' },
-  { label: 'Circle Gateway', icon: Wallet, color: '#432DD7' },
+  { label: 'Circle Nanopayments', icon: Wallet, color: '#432DD7' },
   { label: 'OmniClaw Policy', icon: Shield, color: '#FDC800' },
   { label: 'USDC Settlement', icon: Layers, color: '#7B6EF0' },
-  { label: 'Nanopayments', icon: Zap, color: '#16A34A' },
+  { label: 'Agent CLI Ready', icon: Zap, color: '#16A34A' },
 ];
 
 const steps = [
-  { n: '01', title: 'Agent selects', body: 'Buyer agent picks a paid vendor API endpoint' },
-  { n: '02', title: 'OmniClaw checks', body: '5-point policy engine — budget · allowlist · network' },
-  { n: '03', title: 'Circle settles', body: 'Gateway nanopayment → Arc proof → seller credited' },
+  { n: '01', title: 'Agent asks to spend', body: 'Buyer agent picks a paid API action priced below one cent' },
+  { n: '02', title: 'OmniClaw controls', body: 'Policy checks budget · allowlist · limits · no raw key access' },
+  { n: '03', title: 'Arc proves it', body: 'Circle Nanopayments settle in USDC and unlock the vendor response' },
 ];
 
 export default function Hero() {
@@ -46,7 +47,7 @@ export default function Hero() {
             className="inline-flex items-center gap-2 px-4 py-1.5 text-[11px] font-mono font-bold uppercase tracking-widest border-2"
             style={{ borderColor: '#FDC800', color: '#FDC800', background: 'rgba(253,200,0,0.07)' }}
           >
-            Arc + Circle Agentic Commerce Hackathon
+            Circle Nanopayments + Arc Hackathon
           </div>
           <div
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-widest border-2"
@@ -102,16 +103,47 @@ export default function Hero() {
           className="text-base sm:text-lg max-w-xl mb-10 leading-relaxed font-medium"
           style={{ color: 'rgba(255,255,255,0.55)', letterSpacing: '-0.01em' }}
         >
-          The buyer agent never touches a private key. OmniClaw&apos;s policy engine
-          authorizes every micro-payment &mdash; Circle Gateway executes,
-          Arc Testnet settles with a verifiable proof.
+          Circle Nanopayments and Arc make sub-cent settlement viable.
+          OmniClaw makes autonomous agent spending safe: the buyer agent gets
+          policy, not keys, before every paid action.
         </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.28, duration: 0.4 }}
+          className="grid grid-cols-2 sm:grid-cols-4 gap-0 max-w-2xl mb-10 border-2"
+          style={{ borderColor: 'rgba(253,200,0,0.24)' }}
+        >
+          {[
+            ['Per action', `$${HACKATHON_PROOF.sampleActionCost.toFixed(3)}`],
+            ['Demo txs', `${HACKATHON_PROOF.completedTransactions}+`],
+            ['Required', `${HACKATHON_PROOF.minTransactions}+`],
+            ['Agent keys', 'Never'],
+          ].map(([label, value], i) => (
+            <div
+              key={label}
+              className="px-4 py-3"
+              style={{
+                background: 'rgba(253,200,0,0.05)',
+                borderRight: i < 3 ? '2px solid rgba(253,200,0,0.14)' : 'none',
+              }}
+            >
+              <div className="text-[9px] font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.42)' }}>
+                {label}
+              </div>
+              <div className="text-lg font-black" style={{ color: '#FDC800' }}>
+                {value}
+              </div>
+            </div>
+          ))}
+        </motion.div>
 
         {/* CTA row */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.32, duration: 0.4 }}
+          transition={{ delay: 0.36, duration: 0.4 }}
           className="flex flex-wrap gap-3 mb-14"
         >
           {/* Primary: yellow, neobrutalist */}

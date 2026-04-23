@@ -19,14 +19,14 @@ const layers = [
   },
   {
     icon: Shield,
-    title: 'OmniClaw Policy Engine',
-    desc: 'Spend policy validates budget caps, recipient allowlists, and per-action controls before any payment can route.',
+    title: 'OmniClaw Financial Control Layer',
+    desc: 'The agent does not hold wallet authority. OmniClaw validates budget, recipient, network, and per-action limits before spend.',
     color: 'var(--color-accent-teal)',
   },
   {
     icon: Radio,
-    title: 'Circle Gateway / Nanopayments',
-    desc: 'Primary payment rail: buyer Gateway balance to seller Gateway balance/payout route with programmable per-action settlement.',
+    title: 'Circle Nanopayments',
+    desc: 'Sub-cent USDC payment execution for API calls, compute units, and machine-to-machine commerce.',
     color: 'var(--color-accent-green)',
   },
   {
@@ -55,10 +55,10 @@ export default function ArchitectureSection() {
           className="text-center mb-16"
         >
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--color-text-primary)] mb-4">
-            Gateway-First Architecture
+            Financial Control Before Settlement
           </h2>
           <p className="text-[var(--color-text-secondary)] max-w-xl mx-auto">
-            OmniClaw coordinates policy-controlled buyer and seller agents through Circle Gateway Nanopayments, with Arc as settlement and proof.
+            The rail proves value can move cheaply. OmniClaw proves agents can move value safely.
           </p>
         </motion.div>
 

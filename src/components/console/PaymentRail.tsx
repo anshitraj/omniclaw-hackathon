@@ -17,13 +17,15 @@ const STEPS: {
   layerColor: string;
 }[] = [
   { state: 'idle',            label: 'IDLE',      layer: 'CONTROL',  layerColor: '#566680' },
+  { state: 'selected',        label: 'SELECT',    layer: 'BUYER',    layerColor: '#432DD7' },
   { state: 'inspecting',      label: 'INSPECT',   layer: 'CONTROL',  layerColor: '#566680' },
   { state: 'policy_checking', label: 'POLICY',    layer: 'OMNICLAW', layerColor: '#FDC800' },
   { state: 'approved',        label: 'APPROVED',  layer: 'OMNICLAW', layerColor: '#FDC800' },
-  { state: 'executing',       label: 'EXECUTE',   layer: 'CIRCLE',   layerColor: '#432DD7' },
-  { state: 'confirming',      label: 'CONFIRM',   layer: 'CIRCLE',   layerColor: '#432DD7' },
-  { state: 'arc_settling',    label: 'SETTLE',    layer: 'ARC',      layerColor: '#0D9488' },
-  { state: 'fulfilled',       label: 'DONE',      layer: 'ARC',      layerColor: '#0D9488' },
+  { state: 'wallet_ready',    label: 'FUNDED',    layer: 'CIRCLE',   layerColor: '#432DD7' },
+  { state: 'routing',         label: 'ROUTE',     layer: 'CIRCLE',   layerColor: '#432DD7' },
+  { state: 'settling',        label: 'SETTLE',    layer: 'ARC',      layerColor: '#0D9488' },
+  { state: 'confirmed',       label: 'PROOF',     layer: 'ARC',      layerColor: '#0D9488' },
+  { state: 'fulfilled',       label: 'DONE',      layer: 'SELLER',   layerColor: '#16A34A' },
 ];
 
 const ORDER = STEPS.map((s) => s.state);
@@ -32,7 +34,7 @@ function status(
   step: TransactionState,
   current: TransactionState
 ): 'done' | 'active' | 'pending' | 'error' {
-  if (current === 'failed' || current === 'rejected') return 'error';
+  if (current === 'error') return 'error';
   const ci = ORDER.indexOf(current);
   const si = ORDER.indexOf(step);
   if (si < 0) return 'pending';

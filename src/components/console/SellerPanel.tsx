@@ -35,21 +35,16 @@ interface SellerPanelProps {
   appMode?: 'live' | 'demo' | 'legacy';
 }
 
-function serviceIcon(category: string) {
+function ServiceCategoryIcon({ category, accent }: { category: string; accent: string }) {
   switch (category) {
-    case 'Market Data':       return BarChart2;   // stock chart
-    case 'Risk Intelligence': return ShieldAlert;  // threat shield
-    case 'Settlement':        return FileCheck;    // verified receipt
-    default:                  return Zap;
-  }
-}
-
-function serviceGradient(category: string) {
-  switch (category) {
-    case 'Market Data':       return 'from-blue-500/10 to-cyan-500/5';
-    case 'Risk Intelligence': return 'from-rose-500/10 to-pink-500/5';
-    case 'Settlement':        return 'from-emerald-500/10 to-teal-500/5';
-    default:                  return 'from-amber-500/10 to-orange-500/5';
+    case 'Market Data':
+      return <BarChart2 className="w-4 h-4" style={{ color: accent }} />;
+    case 'Risk Intelligence':
+      return <ShieldAlert className="w-4 h-4" style={{ color: accent }} />;
+    case 'Settlement':
+      return <FileCheck className="w-4 h-4" style={{ color: accent }} />;
+    default:
+      return <Zap className="w-4 h-4" style={{ color: accent }} />;
   }
 }
 
@@ -73,9 +68,7 @@ function SellerServiceCard({
   onSelect: () => void;
   transactionState: TransactionState;
 }) {
-  const Icon = serviceIcon(service.category);
   const accent = serviceAccent(service.category);
-  const gradient = serviceGradient(service.category);
   const isFulfilled = selected && transactionState === 'fulfilled';
   const isProcessing = selected && ['routing', 'settling', 'confirmed'].includes(transactionState);
   const isAvailable = service.availability === 'online' && service.fulfillmentState === 'available';
@@ -108,7 +101,7 @@ function SellerServiceCard({
               border: `1px solid ${accent}25`,
             }}
           >
-            <Icon className="w-4 h-4" style={{ color: accent }} />
+            <ServiceCategoryIcon category={service.category} accent={accent} />
           </div>
 
           <div className="min-w-0 flex-1">

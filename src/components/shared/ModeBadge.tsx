@@ -47,7 +47,7 @@ const modeConfig: Record<
     bg: 'rgba(245,158,11,0.08)',
     border: 'rgba(245,158,11,0.2)',
     dot: '#f59e0b',
-    tooltip: 'Legacy direct transfer path. Circle Gateway is the primary production rail.',
+    tooltip: 'Legacy direct transfer path. Circle Nanopayments are the primary production rail.',
   },
 };
 

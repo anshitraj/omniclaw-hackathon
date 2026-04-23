@@ -19,7 +19,11 @@ export interface PaymentExecutionResult {
   buyerFundingSource: string;
   sellerSettlementDestination: string;
   gatewayBalanceSource: 'API' | 'On-chain Fallback' | 'Demo';
-  sellerSettlementMode: 'Gateway Batch Settlement' | 'Legacy Direct Mode' | 'Demo Settlement';
+  sellerSettlementMode:
+    | 'Circle Nanopayment Settlement'
+    | 'Arc USDC Transfer Fallback'
+    | 'Legacy Direct Mode'
+    | 'Demo Settlement';
 }
 
 export interface PaymentRuntimeContext {

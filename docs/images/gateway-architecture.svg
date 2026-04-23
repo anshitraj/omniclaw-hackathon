@@ -10,7 +10,7 @@
     </linearGradient>
   </defs>
   <rect width="1200" height="560" rx="28" fill="url(#bg)"/>
-  <text x="56" y="64" fill="#E5E7EB" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700">OmniClaw Gateway-First Payment Architecture</text>
+  <text x="56" y="64" fill="#E5E7EB" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700">OmniClaw Financial Control Architecture</text>
   <text x="56" y="98" fill="#9CA3AF" font-family="Inter, Arial, sans-serif" font-size="18">Buyer Agent → Policy Engine → Circle Gateway Rail → Seller Gateway Balance → Arc Settlement Proof</text>
 
   <line x1="130" y1="280" x2="1070" y2="280" stroke="url(#line)" stroke-width="6" stroke-linecap="round"/>

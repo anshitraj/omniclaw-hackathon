@@ -166,6 +166,14 @@ export interface TransactionReceipt {
   architectureWarning?: string;
 }
 
+export interface HackathonProof {
+  minTransactions: number;
+  targetPrice: number;
+  sampleActionCost: number;
+  traditionalGasEstimate: number;
+  completedTransactions: number;
+}
+
 // --- Integration Health ---
 export interface IntegrationHealth {
   omniclaw: OmniClawIntegrationStatus;

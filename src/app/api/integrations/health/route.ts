@@ -47,7 +47,7 @@ export async function GET() {
   const activePaymentRail = getActivePaymentRail(runtime);
   const warnings = [...overview.architecture.warnings];
   if (activePaymentRail === 'direct') {
-    warnings.push('Legacy direct transfer mode is active. Gateway rail should be the primary production path.');
+    warnings.push('Legacy direct transfer mode is active. Circle Nanopayments should be the primary production path.');
   }
 
   const health: IntegrationHealth = {

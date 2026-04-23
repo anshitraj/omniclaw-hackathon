@@ -1,17 +1,14 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import type { ComponentType, CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import {
   Bot,
   Shield,
   Wallet,
   Zap,
-  CheckCircle2,
-  XCircle,
-  Clock,
   Radio,
-  Layers,
   Activity,
 } from 'lucide-react';
 import type { DemoEvent, TransactionState } from '@/types';
@@ -28,7 +25,7 @@ type EventSource = DemoEvent['source'];
 
 const SOURCE_CONFIG: Record<
   EventSource,
-  { icon: React.ComponentType<{ className?: string }>; label: string; accent: string; badgeClass: string }
+  { icon: ComponentType<{ className?: string; style?: CSSProperties }>; label: string; accent: string; badgeClass: string }
 > = {
   buyer: {
     icon: Bot,
@@ -48,14 +45,14 @@ const SOURCE_CONFIG: Record<
     accent: '#0D9488',
     badgeClass: 'nb-badge nb-badge-teal',
   },
-  payment: {
+  seller: {
     icon: Radio,
-    label: 'PAYMENT',
+    label: 'SELLER',
     accent: '#16A34A',
     badgeClass: 'nb-badge nb-badge-teal',
   },
   settlement: {
-    icon: Layers,
+    icon: Radio,
     label: 'SETTLE',
     accent: '#7B6EF0',
     badgeClass: 'nb-badge nb-badge-indigo',
@@ -75,15 +72,16 @@ const STATE_BADGE: Record<
   { label: string; cls: string }
 > = {
   idle:             { label: 'idle',             cls: 'nb-badge nb-badge-muted' },
+  selected:         { label: 'selected',         cls: 'nb-badge nb-badge-indigo' },
   inspecting:       { label: 'inspecting',       cls: 'nb-badge nb-badge-yellow' },
   policy_checking:  { label: 'policy_check',     cls: 'nb-badge nb-badge-yellow' },
   approved:         { label: 'approved',         cls: 'nb-badge nb-badge-teal' },
-  executing:        { label: 'executing',        cls: 'nb-badge nb-badge-indigo' },
-  confirming:       { label: 'confirming',       cls: 'nb-badge nb-badge-indigo' },
-  arc_settling:     { label: 'arc_settling',     cls: 'nb-badge nb-badge-indigo' },
+  wallet_ready:     { label: 'wallet_ready',     cls: 'nb-badge nb-badge-teal' },
+  routing:          { label: 'routing',          cls: 'nb-badge nb-badge-indigo' },
+  settling:         { label: 'arc_settling',     cls: 'nb-badge nb-badge-indigo' },
+  confirmed:        { label: 'confirmed',        cls: 'nb-badge nb-badge-teal' },
   fulfilled:        { label: 'fulfilled',        cls: 'nb-badge nb-badge-teal' },
-  failed:           { label: 'failed',           cls: 'nb-badge nb-badge-red' },
-  rejected:         { label: 'rejected',         cls: 'nb-badge nb-badge-red' },
+  error:            { label: 'error',            cls: 'nb-badge nb-badge-red' },
 };
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -155,7 +153,7 @@ export default function EventFeed({ events, appMode = 'demo' }: EventFeedProps) 
         ) : (
           <div className="p-4 space-y-3">
             {events.map((event, i) => (
-              <EventCard key={event.id} event={event} index={i} />
+              <EventCard key={`${event.id}-${event.timestamp}-${i}`} event={event} index={i} />
             ))}
             <div ref={bottomRef} />
           </div>
@@ -224,7 +222,7 @@ function EventCard({ event, index }: { event: DemoEvent; index: number }) {
             className="text-[10px] font-mono flex-shrink-0 ml-2"
             style={{ color: 'var(--color-text-muted)' }}
           >
-            {formatTimestamp(event.timestamp, 'time')}
+            {formatTimestamp(event.timestamp)}
           </span>
         </div>
 

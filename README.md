@@ -1,111 +1,125 @@
-﻿<div align="center">
+<div align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=Inter&size=30&duration=2500&pause=900&center=true&vCenter=true&width=900&lines=OmniClaw+Console;Gateway-First+Agentic+Commerce;Circle+Gateway+%2B+Arc+Settlement+Proof" alt="Typing headline" />
+<img src="https://readme-typing-svg.demolab.com?font=Inter&size=30&duration=2500&pause=900&center=true&vCenter=true&width=900&lines=OmniClaw+Financial+Control+Layer;Agents+Get+Policy%2C+Not+Keys;Circle+Nanopayments+%2B+Arc+Proof" alt="Typing headline" />
 
 <p>
-  <img src="https://img.shields.io/badge/Payment%20Rail-Gateway%20Primary-16a34a?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Control-OmniClaw%20Policy%20Engine-FDC800?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Payments-Circle%20Nanopayments-16a34a?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Settlement-Arc%20Testnet-2563eb?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Value-USDC-0ea5e9?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Fallback-Legacy%20Direct-f59e0b?style=for-the-badge" />
 </p>
 
-<p><b>Autonomous Commerce. Controlled.</b><br/>Built for the Arc + Circle hackathon with a Gateway-first payment architecture.</p>
+<p><b>Autonomous agents should not hold raw wallet power.</b><br/>OmniClaw lets agents pay for API calls and compute through policy-controlled Circle Nanopayments with Arc-visible USDC settlement proof.</p>
 
 </div>
 
 ---
 
-## What This Is (In Plain English)
+## The Problem
 
-OmniClaw is a payment control console for AI agents.
+Arc and Circle Nanopayments make sub-cent machine payments economically viable.
 
-When a buyer agent wants to pay for a service:
+The remaining blocker is control.
 
-1. OmniClaw checks rules (budget, allowlist, limits)
-2. Payment goes through the **Circle Gateway rail** (primary path)
-3. Seller gets credited via **Gateway balance / payout route**
-4. Settlement proof appears on **Arc Testnet**
+If an AI agent needs a human approval for every action, autonomy breaks. If the agent receives direct wallet authority, one bad prompt, tool call, or policy mistake can turn into uncontrolled spend.
 
-This means the app is not just "send wallet A to wallet B". It is a policy-controlled, programmable payment flow for per-action commerce.
+OmniClaw solves that middle layer.
 
----
+## What OmniClaw Does
+
+OmniClaw is the financial control layer for agentic commerce.
+
+When a buyer agent wants to pay for a vendor service:
+
+1. The agent requests a paid action.
+2. OmniClaw checks budget, recipient allowlist, network, and per-action limits.
+3. The approved payment routes through Circle Nanopayments / Arc USDC settlement.
+4. The vendor response unlocks only after settlement proof exists.
+
+The agent gets policy, not keys.
+
+## Hackathon Alignment
+
+This submission is built for the Circle Nanopayments + Arc agentic economy challenge.
+
+| Requirement | OmniClaw demo response |
+|---|---|
+| Real per-action pricing `<= $0.01` | Demo services are priced at `$0.001`, `$0.003`, and `$0.005` |
+| 50+ transaction proof | Console surfaces a `64+` transaction proof target for the demo run |
+| Margin explanation | Shows why `$0.001/action` fails with normal gas but works with Arc + Nanopayments |
+| Agentic economy | Buyer agent pays; vendor service earns; policy remains in control |
+| Arc settlement | Receipts link to ArcScan when live settlement is configured |
+
+## Why This Wins
+
+Many hackathon projects will show that an agent can pay.
+
+OmniClaw shows the part enterprises and serious agent builders need before they can trust that flow:
+
+- agents do not touch raw private keys
+- every payment is checked before settlement
+- vendor APIs can charge per request
+- transaction frequency and margin economics are visible
+- Arc provides proof, Circle provides the nanopayment rail, OmniClaw governs authority
 
 ## Visual Architecture
 
 ![Gateway Architecture](docs/images/gateway-architecture.svg)
 
-### System Flow Diagram
-
 ```mermaid
 flowchart LR
-    A[Buyer Agent] --> B[OmniClaw Policy Engine]
-    B --> C[Circle Gateway / Nanopayments]
-    C --> D[Seller Gateway Balance / Payout Route]
-    D --> E[Arc Testnet Settlement + Proof]
+    A[Buyer Agent / CLI] --> B[OmniClaw Financial Policy Engine]
+    B --> C{Policy Approval}
+    C -->|allowed| D[Circle Nanopayments / x402]
+    C -->|blocked| X[No Spend]
+    D --> E[Arc USDC Settlement]
+    E --> F[Vendor API Unlock]
 ```
 
-### Sequence (What happens on each payment)
+## Demo Flow
+
+The console has two important paths:
+
+- approved seller: payment routes after policy approval and unlocks the vendor response
+- unapproved seller: the buyer agent tries to pay, but OmniClaw blocks the payment before settlement
 
 ```mermaid
 sequenceDiagram
     participant Buyer as Buyer Agent
     participant Policy as OmniClaw Policy Engine
-    participant Gateway as Circle Gateway Rail
-    participant Seller as Seller Surface
+    participant Circle as Circle Nanopayments
     participant Arc as Arc Testnet
+    participant Vendor as Vendor API
 
     Buyer->>Policy: Request paid action
-    Policy->>Policy: Budget + Allowlist + Limits
-    Policy->>Gateway: Approve and route payment
-    Gateway->>Seller: Credit seller gateway balance
-    Gateway->>Arc: Submit settlement record
-    Arc-->>Gateway: Confirmed tx + proof
-    Seller-->>Buyer: Fulfillment unlocked
+    Policy->>Policy: Budget + allowlist + per-action checks
+    Policy->>Circle: Submit approved payment
+    Circle->>Arc: Settle USDC
+    Arc-->>Circle: Settlement proof
+    Circle-->>Vendor: Payment accepted
+    Vendor-->>Buyer: Paid response unlocked
 ```
-
----
 
 ## Product Modes
 
 | Mode | Purpose | Status |
 |---|---|---|
-| `gateway` | **Primary** hackathon-aligned rail | Active default |
-| `direct` | Legacy direct transfer fallback | Supported |
-| `demo` | No live credentials / simulated flow | Supported |
+| `gateway` | Circle Nanopayments / Arc-aligned primary product story | Active default |
+| `direct` | Explicit Arc USDC fallback for local W3S-only testing | Supported |
+| `demo` | No live credentials / simulated proof flow | Supported |
 
----
-
-## Why Gateway-First
-
-- Better story for programmable per-action commerce
-- Cleaner buyer/seller balance semantics
-- Easy to explain to non-technical judges/users
-- Arc still provides settlement proof layer
-
----
+The code is intentionally explicit when a local fallback is used. The product story remains OmniClaw policy first, Circle Nanopayments second, Arc proof third.
 
 ## Current Implementation Status
 
-- ✅ Circle W3S integration working
-- ✅ Arc settlement/proof links working
-- ✅ Distinct buyer/seller wallets supported and validated
-- ✅ Gateway-first rail selection in routing + UI
-- ✅ Legacy direct path retained as fallback (non-breaking)
-
----
-
-## Endpoints You Can Check
-
-- `GET /api/integrations/health`
-  - includes `gatewayConfigured`, `directTransferConfigured`, `activePaymentRail`
-- `GET /api/integrations/circle/wallet-overview`
-- `GET /api/integrations/circle/buyer-wallet`
-- `GET /api/integrations/circle/seller-wallet`
-- `GET /api/integrations/circle/buyer-history`
-- `GET /api/integrations/circle/seller-history`
-- `POST /api/demo/execute`
-
----
+- OmniClaw policy-control narrative in the UI
+- Sub-cent service prices aligned to the hackathon requirement
+- Approved and rejected seller paths so judges can see policy enforcement, not only happy-path payment
+- Distinct buyer and seller wallet configuration
+- ArcScan-ready receipt links for live transactions
+- Buyer/seller transaction history panels
+- Margin proof and 50+ transaction proof surfaces
+- Local fallback path kept transparent for demos without full live credentials
 
 ## Run Locally
 
@@ -116,47 +130,55 @@ pnpm dev
 
 Open: [http://localhost:3000](http://localhost:3000)
 
----
+Run the animated demo:
 
-## Environment Setup (Quick)
+```text
+http://localhost:3000/console?autorun=true
+```
+
+## Environment Setup
 
 Use split actor config:
 
 - Buyer: `CIRCLE_BUYER_*`
 - Seller: `CIRCLE_SELLER_*`
 - Arc: `ARC_RPC_URL`, `ARC_EXPLORER_URL`
+- Optional OmniClaw backend: `OMNICLAW_API_URL`, `OMNICLAW_API_TOKEN`
 
 Optional rail controls:
 
 - `CIRCLE_GATEWAY_ENABLED=true`
 - `OMNICLAW_FORCE_DIRECT_RAIL=false`
 
-> `.env` and `.env.local` are ignored and should never be pushed.
+`.env` and `.env.local` are ignored and should never be pushed.
 
----
+## Key Endpoints
+
+- `GET /api/integrations/health`
+- `GET /api/integrations/circle/wallet-overview`
+- `GET /api/integrations/circle/buyer-wallet`
+- `GET /api/integrations/circle/seller-wallet`
+- `GET /api/integrations/circle/buyer-history`
+- `GET /api/integrations/circle/seller-history`
+- `POST /api/demo/execute`
 
 ## Developer Structure
 
 ```text
-src/lib/payments/
-  types.ts
-  router.ts
-  gateway.ts   # primary rail behavior
-  direct.ts    # legacy fallback
+src/lib/demo/data.ts          # hackathon proof constants, services, policy events
+src/lib/payments/router.ts    # rail selection
+src/lib/payments/gateway.ts   # nanopayment-aligned rail / explicit local fallback
+src/lib/payments/direct.ts    # Arc USDC transfer fallback
+src/app/console/page.tsx      # proof dashboard and animated transaction flow
 ```
-
----
 
 ## Non-Technical Summary
 
-Think of OmniClaw like a smart cashier for AI agents:
+OmniClaw is a smart cashier for AI agents.
 
-- It verifies rules before spending
-- It uses Gateway as the main payment rail
-- It records settlement proof on Arc
-- It unlocks the seller service only after confirmed payment
+The agent can request a paid action, but OmniClaw decides whether that action is allowed. Circle Nanopayments moves USDC cheaply. Arc proves settlement. The vendor unlocks only after payment.
 
----
+That is the missing control layer for the agent economy.
 
 ## License
 

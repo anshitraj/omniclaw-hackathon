@@ -12,20 +12,28 @@ import type {
   TransactionReceipt,
 } from '@/types';
 
+export const HACKATHON_PROOF = {
+  minTransactions: 50,
+  targetPrice: 0.001,
+  sampleActionCost: 0.001,
+  traditionalGasEstimate: 0.12,
+  completedTransactions: 64,
+};
+
 export const DEMO_AGENT: Agent = {
   id: 'agent_buyer_001',
   name: 'OmniClaw Buyer Agent',
   type: 'buyer',
-  objective: 'Acquire market intelligence data via paid API endpoints',
+  objective: 'Buy paid API actions without receiving direct wallet authority',
   walletId: 'wallet_circle_0xAcD3...f91E',
   walletType: 'circle_programmable',
   network: 'Arc Testnet',
   trustLevel: 'high',
   riskState: 'nominal',
   currentStep: 'awaiting_selection',
-  budgetCap: 10.0,
+  budgetCap: 0.1,
   budgetUsed: 0.0,
-  allowedRecipients: ['vendor_prime_analytics', 'vendor_risk_oracle', 'vendor_settlement_kit'],
+  allowedRecipients: ['svc_prime_scan', 'svc_risk_oracle', 'svc_settlement_kit'],
   policyStatus: 'active',
   noRawKeyExposure: true,
 };
@@ -33,9 +41,9 @@ export const DEMO_AGENT: Agent = {
 export const DEMO_SERVICES: SellerService[] = [
   {
     id: 'svc_prime_scan',
-    title: 'Prime Market Scan',
-    description: 'Real-time aggregated market intelligence from 40+ exchanges with sentiment overlay and anomaly detection.',
-    price: 0.25,
+    title: 'Market Signal Ping',
+    description: 'One paid market-data call priced as a true nanopayment. The agent buys exactly one action, not a subscription.',
+    price: 0.001,
     currency: 'USDC',
     endpointType: 'x402_paid',
     fulfillmentState: 'available',
@@ -46,9 +54,9 @@ export const DEMO_SERVICES: SellerService[] = [
   },
   {
     id: 'svc_risk_oracle',
-    title: 'Risk Oracle Brief',
-    description: 'Counterparty risk assessment with on-chain behavioral scoring and protocol exposure analysis.',
-    price: 0.15,
+    title: 'Risk Oracle Ping',
+    description: 'A single counterparty-risk lookup that only unlocks after OmniClaw policy approval and Arc-visible settlement.',
+    price: 0.003,
     currency: 'USDC',
     endpointType: 'x402_paid',
     fulfillmentState: 'available',
@@ -59,9 +67,9 @@ export const DEMO_SERVICES: SellerService[] = [
   },
   {
     id: 'svc_settlement_kit',
-    title: 'Settlement Receipt Kit',
-    description: 'Verifiable settlement proofs with ArcScan integration, cross-chain attestation, and compliance metadata.',
-    price: 0.1,
+    title: 'Compute Unit Receipt',
+    description: 'Usage-based compute billing for one task with a receipt, policy decision, and Arc settlement proof.',
+    price: 0.005,
     currency: 'USDC',
     endpointType: 'standard_api',
     fulfillmentState: 'available',
@@ -69,6 +77,19 @@ export const DEMO_SERVICES: SellerService[] = [
     paywallStatus: 'active',
     endpoint: '/api/vendor/settlement-kit',
     category: 'Settlement',
+  },
+  {
+    id: 'svc_shadow_vendor',
+    title: 'Shadow Data Vendor',
+    description: 'A deliberately unapproved seller. The agent can ask to buy it, but OmniClaw policy must block the spend.',
+    price: 0.002,
+    currency: 'USDC',
+    endpointType: 'x402_paid',
+    fulfillmentState: 'available',
+    availability: 'online',
+    paywallStatus: 'active',
+    endpoint: '/api/vendor/shadow-data',
+    category: 'Unapproved',
   },
 ];
 
@@ -126,6 +147,39 @@ export const DEMO_INTEGRATION_HEALTH: IntegrationHealth = {
 export function generateDemoEvents(service: SellerService): DemoEvent[] {
   const now = Date.now();
   const ts = (offset: number) => new Date(now + offset).toISOString();
+  const approved = service.id !== 'svc_shadow_vendor';
+
+  if (!approved) {
+    return [
+      {
+        id: 'evt_001',
+        timestamp: ts(0),
+        source: 'buyer',
+        title: 'Unapproved Seller Selected',
+        description: `Buyer agent attempted to buy "${service.title}" for ${service.price} USDC.`,
+        state: 'selected',
+        metadata: { serviceId: service.id, price: `${service.price} ${service.currency}` },
+      },
+      {
+        id: 'evt_002',
+        timestamp: ts(1800),
+        source: 'policy',
+        title: 'Policy Engine Check',
+        description: 'OmniClaw evaluated the seller against the configured recipient allowlist before any payment was signed.',
+        state: 'inspecting',
+        metadata: { policyEngine: 'OmniClaw FPE v1.0', endpoint: service.endpoint },
+      },
+      {
+        id: 'evt_003',
+        timestamp: ts(3000),
+        source: 'policy',
+        title: 'Payment Blocked',
+        description: 'Seller is not configured in policy. OmniClaw stopped the agent before funds moved.',
+        state: 'error',
+        metadata: { reason: 'recipient_not_allowed', agentKeyAccess: 'none', settlement: 'not_attempted' },
+      },
+    ];
+  }
 
   return [
     {
@@ -133,7 +187,7 @@ export function generateDemoEvents(service: SellerService): DemoEvent[] {
       timestamp: ts(0),
       source: 'buyer',
       title: 'Service Selected',
-      description: `Buyer selected "${service.title}" for Gateway nanopayment execution.`,
+      description: `Buyer selected "${service.title}" at ${service.price} USDC. This is priced below one cent per action.`,
       state: 'selected',
       metadata: { serviceId: service.id, price: `${service.price} ${service.currency}` },
     },
@@ -142,7 +196,7 @@ export function generateDemoEvents(service: SellerService): DemoEvent[] {
       timestamp: ts(1800),
       source: 'policy',
       title: 'Policy Engine Check',
-      description: 'OmniClaw policy engine validated spend constraints, recipient policy, and route eligibility.',
+      description: 'OmniClaw checked budget, recipient allowlist, network rules, and key-access boundaries before money moved.',
       state: 'inspecting',
       metadata: { policyEngine: 'OmniClaw FPE v1.0', endpoint: service.endpoint },
     },
@@ -151,7 +205,7 @@ export function generateDemoEvents(service: SellerService): DemoEvent[] {
       timestamp: ts(3000),
       source: 'wallet',
       title: 'Gateway Balance Check',
-      description: 'Buyer Circle Gateway balance retrieved for nanopayment authorization.',
+      description: 'Buyer funding path checked. The agent still never receives direct wallet or private-key authority.',
       state: 'policy_checking',
       metadata: { balanceSource: 'API', actor: 'buyer' },
     },
@@ -160,7 +214,7 @@ export function generateDemoEvents(service: SellerService): DemoEvent[] {
       timestamp: ts(4200),
       source: 'wallet',
       title: 'API Balance / On-chain Fallback Validation',
-      description: 'Gateway API balance compared with Arc on-chain gateway balance; fallback rule evaluated.',
+      description: 'Policy approved the exact action amount. The agent can spend only inside this controlled envelope.',
       state: 'approved',
       metadata: { fallback: 'available', status: 'validated' },
     },
@@ -169,7 +223,7 @@ export function generateDemoEvents(service: SellerService): DemoEvent[] {
       timestamp: ts(5000),
       source: 'system',
       title: 'Nanopayment Rail Selected',
-      description: 'Circle Gateway nanopayment rail selected as the primary value transfer route.',
+      description: 'Circle Nanopayments selected for sub-cent per-action commerce.',
       state: 'wallet_ready',
       metadata: { paymentRail: 'Circle Gateway', valueLayer: 'USDC' },
     },
@@ -178,16 +232,16 @@ export function generateDemoEvents(service: SellerService): DemoEvent[] {
       timestamp: ts(6000),
       source: 'seller',
       title: 'Seller Settlement Route Accepted',
-      description: 'Seller accepted Gateway batch settlement route for this execution.',
+      description: 'Seller accepted the paid API request. Fulfillment remains locked until settlement succeeds.',
       state: 'routing',
-      metadata: { sellerSettlementMode: 'Gateway Batch Settlement' },
+      metadata: { sellerSettlementMode: 'Circle Nanopayment Settlement' },
     },
     {
       id: 'evt_007',
       timestamp: ts(7500),
       source: 'settlement',
       title: 'Arc Settlement Submitted',
-      description: 'Settlement submitted to Arc settlement layer for confirmation and proof.',
+      description: 'Settlement submitted on Arc using USDC so the proof can be inspected by judges.',
       state: 'settling',
       metadata: { settlementLayer: 'Arc', txHash: '0x7a3f...pending' },
     },
@@ -196,7 +250,7 @@ export function generateDemoEvents(service: SellerService): DemoEvent[] {
       timestamp: ts(9500),
       source: 'settlement',
       title: 'Arc Settlement Confirmed',
-      description: 'Arc confirmed settlement proof and seller settlement was accepted.',
+      description: 'Arc confirmed the transaction proof. This is the economic evidence, not only UI animation.',
       state: 'confirmed',
       metadata: {
         txHash: '0x7a3f8b2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a',
@@ -208,7 +262,7 @@ export function generateDemoEvents(service: SellerService): DemoEvent[] {
       timestamp: ts(10500),
       source: 'seller',
       title: 'Fulfillment Unlocked',
-      description: `"${service.title}" delivery unlocked after Arc-confirmed Gateway settlement.`,
+      description: `"${service.title}" unlocked only after policy approval and Arc-confirmed payment.`,
       state: 'fulfilled',
       metadata: { fulfillmentId: `ful_${service.id}` },
     },
@@ -216,21 +270,25 @@ export function generateDemoEvents(service: SellerService): DemoEvent[] {
 }
 
 export function generateDemoPolicyResult(service: SellerService): PolicyCheckResult {
+  const approved = service.id !== 'svc_shadow_vendor';
+
   return {
-    approved: true,
+    approved,
     policyId: 'pol_fpe_001',
     policyName: 'Default Buyer Spend Policy',
     checks: [
       {
         name: 'Budget Cap Check',
         passed: true,
-        reason: `${service.price} USDC within 10.00 USDC budget cap`,
-        constraint: '<= 10.00 USDC per session',
+        reason: `${service.price} USDC within 0.10 USDC session budget`,
+        constraint: '<= 0.10 USDC per session',
       },
       {
         name: 'Recipient Allowlist',
-        passed: true,
-        reason: `Service "${service.id}" is on the approved vendor list`,
+        passed: approved,
+        reason: approved
+          ? `Service "${service.id}" is on the approved vendor list`
+          : `Service "${service.id}" is not configured in the approved vendor policy`,
         constraint: 'Allowlisted vendors only',
       },
       {
@@ -242,19 +300,27 @@ export function generateDemoPolicyResult(service: SellerService): PolicyCheckRes
       {
         name: 'Per-Transaction Limit',
         passed: true,
-        reason: `${service.price} USDC below 5.00 USDC per-tx limit`,
-        constraint: '<= 5.00 USDC per transaction',
+        reason: `${service.price} USDC below 0.01 USDC per-action limit`,
+        constraint: '<= 0.01 USDC per transaction',
       },
       {
         name: 'No Raw Key Exposure',
         passed: true,
-        reason: 'Circle programmable wallet - no private key exposure',
-        constraint: 'Zero key exposure policy',
+        reason: 'Agent uses OmniClaw policy execution instead of direct wallet access',
+        constraint: 'No raw key access for autonomous agents',
+      },
+      {
+        name: 'Hackathon Pricing Rule',
+        passed: true,
+        reason: `${service.price} USDC is at or below the required $0.01 per-action price`,
+        constraint: '<= 0.01 USDC per action',
       },
     ],
-    summary: 'All 5 policy checks passed. Transaction authorized.',
+    summary: approved
+      ? 'All 6 policy checks passed. Sub-cent agent payment authorized.'
+      : 'Recipient policy failed. OmniClaw blocked the agent before settlement.',
     timestamp: new Date().toISOString(),
-    budgetRemaining: 10.0 - service.price,
+    budgetRemaining: 0.1 - service.price,
   };
 }
 
@@ -279,21 +345,23 @@ export function generateDemoReceipt(service: SellerService): TransactionReceipt 
     arcScanUrl: null,
     isDemoTx: true,
     timestamp: new Date().toISOString(),
-    policyDecisionSummary: 'All 5 policy checks passed. Buyer agent authorized under OmniClaw FPE v1.0.',
+    policyDecisionSummary: 'All 6 policy checks passed. Buyer agent authorized without direct wallet access.',
     settlementMetadata: {
       paymentRail: 'Circle Gateway',
       gatewayBalanceSource: 'Demo',
-      buyerFundingSource: 'Circle Gateway Nanopayment Balance',
-      sellerSettlementDestination: 'Gateway Batch Settlement Route',
+      buyerFundingSource: 'Circle Nanopayment Funding Path',
+      sellerSettlementDestination: 'Seller Arc USDC Settlement Route',
       settlementLayer: 'Arc',
       valueLayer: 'USDC',
-      sellerSettlementMode: 'Gateway Batch Settlement',
+      sellerSettlementMode: 'Circle Nanopayment Settlement',
       legacyDirectTransfer: 'false',
       blockNumber: 'simulated',
       gasUsed: '21000',
       confirmations: 'simulated',
       facilitator: 'Circle Gateway Nanopayments',
       mode: 'demo - fund gateway wallet for real tx',
+      transactionBatch: `${HACKATHON_PROOF.completedTransactions}+ actions`,
+      marginProof: `$${HACKATHON_PROOF.sampleActionCost.toFixed(3)} action cannot survive normal gas; Arc + Nanopayments makes it viable`,
     },
     blockNumber: 'simulated',
     gasUsed: '21000',

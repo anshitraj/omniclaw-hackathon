@@ -5,6 +5,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatUSDC(amount: number): string {
+  if (amount > 0 && amount < 0.01) {
+    return `${amount.toFixed(4)} USDC`;
+  }
   return `${amount.toFixed(2)} USDC`;
 }
 

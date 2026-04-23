@@ -1,6 +1,6 @@
 'use client';
 
-import { useReducer, useCallback, useState, useEffect, Suspense } from 'react';
+import { useReducer, useCallback, useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -23,7 +23,7 @@ import { ModeBadge, deriveAppMode } from '@/components/shared/ModeBadge';
 import { RailBadge } from '@/components/shared/StatusPill';
 
 import { demoReducer, createInitialState } from '@/lib/demo/store';
-import { generateDemoEvents, DEMO_SERVICES } from '@/lib/demo/data';
+import { generateDemoEvents, generateDemoPolicyResult, DEMO_SERVICES, HACKATHON_PROOF } from '@/lib/demo/data';
 import { truncateHash } from '@/lib/utils';
 
 import type {
@@ -52,31 +52,27 @@ async function runLiveSequence(
     .catch(() => null);
 
   const events = generateDemoEvents(service);
+  const policyResult = generateDemoPolicyResult(service);
   for (let i = 0; i < events.length; i++) {
     await new Promise((r) => setTimeout(r, STEP_DELAY));
     const event = events[i];
     dispatch({ type: 'ADD_EVENT', event });
     dispatch({ type: 'SET_STATE', state: event.state });
     if (event.state === 'approved') {
-      dispatch({
-        type: 'SET_POLICY_RESULT',
-        result: {
-          approved: true,
-          policyId: 'pol_fpe_001',
-          policyName: 'Default Buyer Spend Policy',
-          checks: [
-            { name: 'Budget Cap Check', passed: true, reason: `${service.price} USDC within budget`, constraint: '<= 10.00 USDC' },
-            { name: 'Recipient Allowlist', passed: true, reason: 'Approved vendor', constraint: 'Allowlisted only' },
-            { name: 'Network Restriction', passed: true, reason: 'Arc Testnet approved', constraint: 'Arc Testnet only' },
-            { name: 'Per-Transaction Limit', passed: true, reason: `${service.price} USDC below limit`, constraint: '<= 5.00 USDC' },
-            { name: 'No Raw Key Exposure', passed: true, reason: 'Circle programmable wallet', constraint: 'Zero key exposure' },
-          ],
-          summary: 'All 5 policy checks passed. Transaction authorized.',
-          timestamp: new Date().toISOString(),
-          budgetRemaining: 10.0 - service.price,
-        },
-      });
+      dispatch({ type: 'SET_POLICY_RESULT', result: policyResult });
     }
+    if (event.state === 'error') {
+      dispatch({ type: 'SET_POLICY_RESULT', result: policyResult });
+    }
+  }
+
+  if (!policyResult.approved) {
+    dispatch({
+      type: 'SET_ERROR',
+      error: 'OmniClaw blocked this payment: seller is not configured in the agent policy.',
+    });
+    dispatch({ type: 'SET_RUNNING', running: false });
+    return;
   }
 
   const apiResult = await apiPromise;
@@ -90,7 +86,7 @@ async function runLiveSequence(
         timestamp: new Date().toISOString(),
         source: 'settlement',
         title: 'Seller Settlement Accepted',
-        description: 'Gateway batch settlement accepted with Arc proof and buyer/seller routing metadata.',
+        description: 'Settlement accepted with Arc proof, buyer/seller metadata, and OmniClaw policy evidence.',
         state: 'fulfilled',
         metadata: {
           buyerGateway: receipt.fromAddress ? truncateHash(receipt.fromAddress, 6) : 'n/a',
@@ -114,6 +110,7 @@ function ConsoleContent() {
 
   const [state, dispatch] = useReducer(demoReducer, undefined, createInitialState);
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const autorunStartedRef = useRef(false);
 
   const [walletOverview, setWalletOverview] = useState<CombinedWalletOverview | null>(null);
   const [buyerHistory, setBuyerHistory] = useState<WalletHistoryItem[]>([]);
@@ -192,7 +189,8 @@ function ConsoleContent() {
   }, []);
 
   useEffect(() => {
-    if (autorun && !state.isRunning && state.transactionState === 'idle') {
+    if (autorun && !autorunStartedRef.current && !state.isRunning && state.transactionState === 'idle') {
+      autorunStartedRef.current = true;
       const firstService = DEMO_SERVICES[0];
       dispatch({ type: 'SELECT_SERVICE', service: firstService });
       setTimeout(async () => {
@@ -284,7 +282,7 @@ function ConsoleContent() {
             </button>
           )}
 
-          <div className="flex items-stretch h-full divide-x-2" style={{ divideColor: 'rgba(255,255,255,0.08)' }}>
+          <div className="flex items-stretch h-full divide-x-2 divide-white/10">
             <div className="flex items-center px-3">
               <WalletChip
                 label="Buyer"
@@ -332,6 +330,28 @@ function ConsoleContent() {
       {/* ── Payment Rail ───────────────────────────────────────────────── */}
       <div className="flex-shrink-0 border-b border-[rgba(255,255,255,0.07)]">
         <PaymentRail currentState={state.transactionState} mode={appMode} />
+      </div>
+
+      {/* ── Hackathon Proof Strip ─────────────────────────────────────── */}
+      <div
+        className="flex-shrink-0 grid grid-cols-4 border-b-2"
+        style={{ background: 'var(--nb-dark-3)', borderColor: 'rgba(253,200,0,0.16)' }}
+      >
+        {[
+          ['Per-action price', `$${HACKATHON_PROOF.sampleActionCost.toFixed(3)}`],
+          ['Transaction proof', `${HACKATHON_PROOF.completedTransactions}+`],
+          ['Required minimum', `${HACKATHON_PROOF.minTransactions}+`],
+          ['Normal gas estimate', `$${HACKATHON_PROOF.traditionalGasEstimate.toFixed(2)}`],
+        ].map(([label, value]) => (
+          <div key={label} className="px-4 py-2 border-r" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+            <div className="text-[9px] font-mono uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>
+              {label}
+            </div>
+            <div className="text-sm font-black" style={{ color: '#FDC800' }}>
+              {value}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* ── Main 3-column layout ───────────────────────────────────────── */}

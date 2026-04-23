@@ -1,4 +1,5 @@
-﻿import crypto from 'crypto';
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+import crypto from 'crypto';
 import type { LiveArchitectureHealth, WalletActor } from '@/types';
 
 export const CIRCLE_BASE_URL = 'https://api.circle.com';
@@ -91,7 +92,7 @@ export function authHeadersForActor(actor: WalletActor): Record<string, string> 
   };
 }
 
-let cachedEntityPublicKeys: Partial<Record<WalletActor, string>> = {};
+const cachedEntityPublicKeys: Partial<Record<WalletActor, string>> = {};
 
 async function fetchEntityPublicKey(actor: WalletActor): Promise<string> {
   const res = await fetch(`${CIRCLE_BASE_URL}/v1/w3s/config/entity/publicKey`, {

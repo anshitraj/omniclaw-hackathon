@@ -13,16 +13,16 @@ import {
 const integrationPoints = [
   {
     icon: Server,
-    title: 'OmniClaw Integration',
-    description: 'Buyer-side inspect and payment orchestration with Gateway-first rail selection.',
-    env: 'CIRCLE_BUYER_API_KEY / CIRCLE_SELLER_API_KEY, OMNICLAW_API_URL (optional)',
+    title: 'OmniClaw Policy Layer',
+    description: 'Buyer-side inspect and payment orchestration before any settlement rail receives a payload.',
+    env: 'OMNICLAW_API_URL optional, CIRCLE_BUYER_API_KEY / CIRCLE_SELLER_API_KEY',
     path: 'lib/integrations/omniclaw/client.ts',
     color: 'var(--color-accent-violet)',
   },
   {
     icon: Wallet,
-    title: 'Circle Gateway Rail',
-    description: 'Primary payment architecture for programmable per-action settlement via gateway semantics.',
+    title: 'Circle Nanopayments Rail',
+    description: 'Hackathon-aligned sub-cent per-action payments for API calls, compute units, and agent commerce.',
     env: 'CIRCLE_GATEWAY_ENABLED=true (default), OMNICLAW_FORCE_DIRECT_RAIL=false',
     path: 'lib/payments/router.ts + lib/payments/gateway.ts',
     color: 'var(--color-accent-green)',
@@ -37,8 +37,8 @@ const integrationPoints = [
   },
   {
     icon: Terminal,
-    title: 'Arc Settlement / Proof',
-    description: 'Settlement proof links and receipt verification through Arc Testnet explorer.',
+    title: 'OmniClaw CLI + Arc Proof',
+    description: 'The CLI is the agent execution surface; ArcScan proves the USDC settlement path.',
     env: 'ARC_RPC_URL, ARC_EXPLORER_URL',
     path: 'lib/integrations/arc/explorer.ts',
     color: 'var(--color-accent-blue)',
@@ -70,7 +70,7 @@ export default function DeveloperSection() {
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--color-text-primary)] mb-4">Integration Points</h2>
           <p className="text-[var(--color-text-secondary)] max-w-xl mx-auto">
-            The app is organized for Gateway-first payments with explicit fallback rails for legacy direct and demo flows.
+            The app is organized to show the separation that matters: OmniClaw governs financial authority; Circle and Arc settle approved payments.
           </p>
         </motion.div>
 
