@@ -1,40 +1,22 @@
-// ============================================================
-// AI Provider — Unified Interface
-// ============================================================
-// Auto-selects the first configured AI provider.
-// Falls back to mock reasoning if none configured.
-// ============================================================
-
 import type { AIProvider, AIReasoningResult } from '@/types';
-import * as gemini from './providers/gemini';
-import * as featherless from './providers/featherless';
-import * as aimlapi from './providers/aimlapi';
-
-const providers = [
-  { name: 'gemini' as AIProvider, module: gemini },
-  { name: 'featherless' as AIProvider, module: featherless },
-  { name: 'aimlapi' as AIProvider, module: aimlapi },
-];
+import * as featherless from './featherless';
 
 export function getActiveProvider(): AIProvider {
-  for (const p of providers) {
-    if (p.module.isConfigured()) return p.name;
+  if (featherless.isConfigured()) {
+    return 'featherless';
   }
   return 'mock';
 }
 
 export function isAnyProviderConfigured(): boolean {
-  return providers.some((p) => p.module.isConfigured());
+  return featherless.isConfigured();
 }
 
 export async function reason(prompt: string): Promise<AIReasoningResult> {
-  for (const p of providers) {
-    if (p.module.isConfigured()) {
-      return p.module.reason(prompt);
-    }
+  if (featherless.isConfigured()) {
+    return featherless.reason(prompt);
   }
 
-  // Mock fallback
   return {
     provider: 'mock',
     reasoning:

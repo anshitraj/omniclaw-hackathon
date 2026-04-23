@@ -5,6 +5,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatUSDC(amount: number): string {
+  if (!Number.isFinite(amount)) {
+    return '0.00 USDC';
+  }
+  const abs = Math.abs(amount);
+  if (abs > 0 && abs < 0.01) {
+    const precise = amount.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+    return `${precise} USDC`;
+  }
   return `${amount.toFixed(2)} USDC`;
 }
 

@@ -1,17 +1,9 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Wifi,
-  ChevronDown,
-  ChevronUp,
-  CheckCircle2,
-  XCircle,
-  MinusCircle,
-} from 'lucide-react';
+import { Wifi, ChevronDown, ChevronUp, CheckCircle2, XCircle, MinusCircle } from 'lucide-react';
 import type { IntegrationHealth } from '@/types';
-import { truncateHash } from '@/lib/utils';
 
 interface IntegrationStatusPanelProps {
   health: IntegrationHealth;
@@ -25,9 +17,13 @@ function StatusIcon({ value }: { value: boolean }) {
   );
 }
 
-function LegacyIcon({ state }: { state: string }) {
-  if (state === 'configured') return <CheckCircle2 className="w-3.5 h-3.5 text-[var(--color-accent-green)]" />;
-  if (state === 'partially_configured') return <MinusCircle className="w-3.5 h-3.5 text-[var(--color-accent-amber)]" />;
+function StateIcon({ state }: { state: string }) {
+  if (state === 'configured') {
+    return <CheckCircle2 className="w-3.5 h-3.5 text-[var(--color-accent-green)]" />;
+  }
+  if (state === 'partially_configured') {
+    return <MinusCircle className="w-3.5 h-3.5 text-[var(--color-accent-amber)]" />;
+  }
   return <XCircle className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />;
 }
 
@@ -74,81 +70,29 @@ export default function IntegrationStatusPanel({ health }: IntegrationStatusPane
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-primary)] font-semibold">Buyer Circle config</span>
-                  <StatusIcon value={!!health.buyerConfigured} />
+                  <span className="text-[var(--color-text-primary)] font-semibold">OmniClaw</span>
+                  <StateIcon state={health.omniclaw.state} />
                 </div>
-                <Row label="Buyer Wallet" value={health.buyerWalletAddress ? truncateHash(health.buyerWalletAddress, 6) : 'not set'} />
+                <Row label="Mode" value={health.omniclaw.serverMode ? 'server' : 'mock'} />
+                <Row label="Auth" value={health.omniclaw.serverAuth} />
               </div>
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-primary)] font-semibold">Seller Circle config</span>
-                  <StatusIcon value={!!health.sellerConfigured} />
-                </div>
-                <Row label="Seller Wallet" value={health.sellerWalletAddress ? truncateHash(health.sellerWalletAddress, 6) : 'not set'} />
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">Distinct wallets</span>
-                  <StatusIcon value={!!health.buyerSellerDistinct} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">Live architecture valid</span>
-                  <StatusIcon value={!!health.liveArchitectureValid} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">Buyer balances available</span>
-                  <StatusIcon value={!!health.buyerBalancesAvailable} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">Seller balances available</span>
-                  <StatusIcon value={!!health.sellerBalancesAvailable} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">Buyer history available</span>
-                  <StatusIcon value={!!health.buyerHistoryAvailable} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">Seller history available</span>
-                  <StatusIcon value={!!health.sellerHistoryAvailable} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">EURC visible</span>
-                  <StatusIcon value={!!health.eurcSupported} />
-                </div>
-                <div className="flex items-center justify-between">
                   <span className="text-[var(--color-text-muted)]">Gateway configured</span>
                   <StatusIcon value={!!health.gatewayConfigured} />
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">Legacy direct mode configured</span>
-                  <StatusIcon value={!!health.directTransferConfigured} />
-                </div>
-                <Row
-                  label="Active Payment Rail"
-                  value={
-                    health.activePaymentRail === 'gateway'
-                      ? 'Circle Gateway'
-                      : health.activePaymentRail === 'direct'
-                        ? 'Legacy Direct Mode'
-                        : 'demo'
-                  }
-                />
+                <Row label="Active Payment Rail" value={health.activePaymentRail || 'unavailable'} />
               </div>
 
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">OmniClaw</span>
-                  <LegacyIcon state={health.omniclaw.state} />
-                </div>
-                <div className="flex items-center justify-between">
                   <span className="text-[var(--color-text-muted)]">Arc</span>
-                  <LegacyIcon state={health.arc.state} />
+                  <StateIcon state={health.arc.state} />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">AI</span>
-                  <LegacyIcon state={health.ai.state} />
+                  <span className="text-[var(--color-text-muted)]">AI (Featherless)</span>
+                  <StateIcon state={health.ai.state} />
                 </div>
               </div>
 

@@ -9,7 +9,7 @@ import {
 import { getWalletHistoryForActor } from './history';
 import { getOnChainGatewayUsdcBalance } from '@/lib/integrations/arc/balances';
 
-const KNOWN_BALANCE_SYMBOLS = ['USDC', 'EURC'];
+const KNOWN_BALANCE_SYMBOLS = ['USDC'];
 
 function normalizeAmount(amount: string): number {
   const parsed = Number.parseFloat(amount);
@@ -60,8 +60,7 @@ export async function getWalletSummaryForActor(actor: WalletActor): Promise<Wall
     apiUsdcBalance: 0,
     onChainUsdcBalance: 0,
     usdcBalance: 0,
-    eurcBalance: 0,
-    gatewayBalanceSource: 'Demo',
+    gatewayBalanceSource: 'Unavailable',
     gatewayBalanceSyncStatus: 'unavailable',
     recentTxCount: 0,
     lastUpdated: now,
@@ -72,7 +71,7 @@ export async function getWalletSummaryForActor(actor: WalletActor): Promise<Wall
     return {
       ...base,
       status: 'mock_mode',
-      gatewayBalanceSource: 'Demo',
+      gatewayBalanceSource: 'Unavailable',
       warnings: ['Circle API key is not configured for this actor.'],
     };
   }
@@ -115,7 +114,6 @@ export async function getWalletSummaryForActor(actor: WalletActor): Promise<Wall
       apiUsdcBalance,
       onChainUsdcBalance: onChainUsdcBalance ?? apiUsdcBalance,
       usdcBalance: gatewayBalanceSource === 'On-chain Fallback' && hasOnChain ? onChainUsdcBalance : apiUsdcBalance,
-      eurcBalance: balances.EURC?.amount || 0,
       gatewayBalanceSource,
       gatewayBalanceSyncStatus,
       recentTxCount: history.length,

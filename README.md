@@ -71,7 +71,6 @@ sequenceDiagram
 |---|---|---|
 | `gateway` | **Primary** hackathon-aligned rail | Active default |
 | `direct` | Legacy direct transfer fallback | Supported |
-| `demo` | No live credentials / simulated flow | Supported |
 
 ---
 
@@ -103,7 +102,7 @@ sequenceDiagram
 - `GET /api/integrations/circle/seller-wallet`
 - `GET /api/integrations/circle/buyer-history`
 - `GET /api/integrations/circle/seller-history`
-- `POST /api/demo/execute`
+- `POST /api/execute`
 
 ---
 

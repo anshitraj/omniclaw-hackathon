@@ -1,25 +1,19 @@
-'use client';
+﻿'use client';
 
-import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
+  ExternalLink,
   CheckCircle2,
-  AlertTriangle,
-  Hash,
-  Network,
-  Route,
-  Clock,
+  Copy,
   Shield,
-  Store,
-  Bot,
-  Landmark,
+  Layers,
+  Globe,
+  Receipt,
 } from 'lucide-react';
 import type { TransactionReceipt } from '@/types';
-import { formatUSDC, formatTimestamp, truncateHash } from '@/lib/utils';
-import ProofButton from '@/components/shared/ProofButton';
-import MetricRow, { MetricDivider } from '@/components/shared/MetricRow';
-import StatusPill from '@/components/shared/StatusPill';
+import { formatUSDC } from '@/lib/utils';
+import { useState } from 'react';
 
 interface ReceiptDrawerProps {
   receipt: TransactionReceipt | null;
@@ -27,281 +21,210 @@ interface ReceiptDrawerProps {
   onClose: () => void;
 }
 
-function statusVariant(status: TransactionReceipt['status']): 'success' | 'warning' | 'danger' | 'muted' | 'violet' {
-  switch (status) {
-    case 'confirmed': return 'success';
-    case 'simulated': return 'violet';
-    case 'pending':   return 'warning';
-    case 'failed':    return 'danger';
-    default:          return 'muted';
-  }
-}
-
 export default function ReceiptDrawer({ receipt, isOpen, onClose }: ReceiptDrawerProps) {
-  // Close on Escape
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
+  const [copied, setCopied] = useState(false);
+
+  const copyHash = () => {
+    if (!receipt?.txHash) return;
+    navigator.clipboard.writeText(receipt.txHash);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const formattedApiResponse = (() => {
+    const payload = receipt?.apiResponse ?? receipt?.payEnvelope ?? null;
+    if (!payload) return null;
+    try {
+      return JSON.stringify(payload, null, 2);
+    } catch {
+      return String(payload);
     }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  })();
+
+  const explorerBase = 'https://testnet.arcscan.app';
+  const txHash = typeof receipt?.txHash === 'string' ? receipt.txHash : '';
+  const hasHashLikeTx = txHash.startsWith('0x') && txHash.length >= 12;
+  const arcScanTxLink =
+    receipt?.arcScanUrl || receipt?.proofLink || (hasHashLikeTx ? `${explorerBase}/tx/${txHash}` : null);
+
+  const fallbackAddress = (() => {
+    const envelope = receipt?.payEnvelope as Record<string, unknown> | undefined;
+    const api = receipt?.apiResponse as Record<string, unknown> | undefined;
+    const candidates = [
+      envelope?.buyer_address,
+      envelope?.payment_address,
+      envelope?.payer,
+      api?.buyer_address,
+      api?.payment_address,
+      receipt?.fromAddress,
+    ];
+    for (const c of candidates) {
+      if (typeof c === 'string' && /^0x[a-fA-F0-9]{40}$/.test(c)) return c;
+    }
+    return null;
+  })();
+  const arcScanFallbackLink = fallbackAddress ? `${explorerBase}/address/${fallbackAddress}` : null;
 
   return (
     <AnimatePresence>
       {isOpen && receipt && (
         <>
-          {/* Backdrop */}
           <motion.div
-            key="receipt-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40"
-            style={{ background: 'rgba(8,10,14,0.8)', backdropFilter: 'blur(4px)' }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
             onClick={onClose}
           />
 
-          {/* Drawer panel */}
-          <motion.aside
-            key="receipt-drawer"
+          <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed right-0 top-0 bottom-0 z-50 flex flex-col overflow-hidden"
-            style={{
-              width: 'clamp(360px, 30vw, 480px)',
-              background: 'var(--color-bg-secondary)',
-              borderLeft: '1px solid var(--color-border-default)',
-              boxShadow: '-8px 0 48px rgba(0,0,0,0.6)',
-            }}
-            role="dialog"
-            aria-label="Settlement Receipt"
+            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            className="fixed right-0 top-0 bottom-0 w-full max-w-md z-50 bg-[var(--color-bg-secondary)] border-l border-[var(--color-border-default)] overflow-y-auto"
           >
-            {/* ── Drawer header ─────────────────────────────────────────── */}
-            <div
-              className="flex-shrink-0 flex items-center gap-3 px-5 py-4"
-              style={{ borderBottom: '1px solid var(--color-border-subtle)' }}
-            >
-              {/* Status circle */}
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{
-                  background: receipt.status === 'confirmed'
-                    ? 'rgba(159,232,112,0.08)'
-                    : receipt.isDemoTx
-                      ? 'rgba(124,92,252,0.08)'
-                      : 'rgba(245,158,11,0.08)',
-                }}
-              >
-                {receipt.status === 'confirmed' || receipt.status === 'simulated' ? (
-                  <CheckCircle2
-                    className="w-5 h-5"
-                    style={{ color: receipt.status === 'confirmed' ? '#9fe870' : '#7c5cfc' }}
-                  />
-                ) : (
-                  <AlertTriangle className="w-5 h-5" style={{ color: '#f59e0b' }} />
-                )}
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h2
-                    className="text-sm font-bold text-[var(--color-text-primary)] leading-tight"
-                    style={{ fontFeatureSettings: '"calt" 1' }}
-                  >
-                    Settlement Receipt
-                  </h2>
-                  <StatusPill variant={statusVariant(receipt.status)} dot>
-                    {receipt.status}
-                  </StatusPill>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--color-border-subtle)]">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[var(--color-accent-green)]/10 flex items-center justify-center">
+                  <Receipt className="w-4.5 h-4.5 text-[var(--color-accent-green)]" />
                 </div>
-                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                  {formatTimestamp(receipt.timestamp)}
-                </p>
+                <div>
+                  <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Transaction Proof</h2>
+                  <p className="text-xs text-[var(--color-text-muted)]">Settlement evidence and routing</p>
+                </div>
               </div>
-
-              <button
-                id="receipt-close-btn"
-                onClick={onClose}
-                className="p-2 rounded-xl transition-all hover:scale-105"
-                style={{ color: 'var(--color-text-muted)' }}
-                aria-label="Close receipt"
-              >
-                <X className="w-4 h-4" />
+              <button onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--color-bg-hover)] transition-colors">
+                <X className="w-4 h-4 text-[var(--color-text-muted)]" />
               </button>
             </div>
 
-            {/* ── Body (scrollable) ──────────────────────────────────────── */}
-            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
-
-              {/* ── Amount hero ─────────────────────────────────────────── */}
-              <div
-                className="rounded-2xl px-5 py-5 text-center relative overflow-hidden"
-                style={{
-                  background: receipt.status === 'confirmed'
-                    ? 'rgba(159,232,112,0.04)'
-                    : receipt.isDemoTx
-                      ? 'rgba(124,92,252,0.04)'
-                      : 'var(--color-bg-elevated)',
-                  border: receipt.status === 'confirmed'
-                    ? '1px solid rgba(159,232,112,0.15)'
-                    : receipt.isDemoTx
-                      ? '1px solid rgba(124,92,252,0.15)'
-                      : '1px solid var(--color-border-subtle)',
-                }}
-              >
-                {/* Glow effect on confirmed */}
-                {receipt.status === 'confirmed' && (
-                  <div
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                      background: 'radial-gradient(circle at 50% 0%, rgba(159,232,112,0.08) 0%, transparent 70%)',
-                    }}
-                  />
-                )}
-
-                <div
-                  className="text-3xl font-black tracking-tight relative z-10"
-                  style={{
-                    color: receipt.status === 'confirmed' ? '#9fe870' : 'var(--color-text-primary)',
-                    fontFeatureSettings: '"calt" 1',
-                  }}
-                >
-                  {formatUSDC(receipt.amount)}
-                </div>
-                <div className="text-xs text-[var(--color-text-muted)] mt-1 relative z-10">
-                  {receipt.currency} on {receipt.network}
-                </div>
-                <div className="mt-2 relative z-10">
-                  <span
-                    className="text-xs font-medium px-2.5 py-1 rounded-full"
-                    style={{
-                      background: 'rgba(159,232,112,0.08)',
-                      color: '#9fe870',
-                      border: '1px solid rgba(159,232,112,0.15)',
-                    }}
-                  >
-                    {receipt.serviceTitle}
-                  </span>
+            <div className="px-6 py-6 space-y-6">
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-[var(--color-accent-green)]/5 border border-[var(--color-accent-green)]/10">
+                <CheckCircle2 className="w-5 h-5 text-[var(--color-accent-green)]" />
+                <div>
+                  <p className="text-sm font-semibold text-[var(--color-accent-green)]">{receipt.status === 'confirmed' ? 'Settlement Confirmed' : 'Settlement Submitted'}</p>
+                  <p className="text-xs text-[var(--color-text-muted)]">{new Date(receipt.timestamp).toLocaleString()}</p>
                 </div>
               </div>
 
-              {/* ── Parties ─────────────────────────────────────────────── */}
-              <div
-                className="rounded-2xl p-4 space-y-2"
-                style={{
-                  background: 'var(--color-bg-primary)',
-                  border: '1px solid var(--color-border-subtle)',
-                }}
-              >
-                <div className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--color-text-muted)' }}>
-                  Parties
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Bot className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#9fe870' }} />
-                  <span className="text-xs text-[var(--color-text-muted)]">Sender</span>
-                  <span className="ml-auto text-[11px] font-mono text-[var(--color-text-secondary)]">
-                    {receipt.senderLabel || (receipt.fromAddress ? truncateHash(receipt.fromAddress, 6) : 'Buyer Agent')}
-                  </span>
-                </div>
+              <div>
+                <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide mb-2 block">Transaction Hash</label>
                 <div className="flex items-center gap-2">
-                  <Store className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#f59e0b' }} />
-                  <span className="text-xs text-[var(--color-text-muted)]">Recipient</span>
-                  <span className="ml-auto text-[11px] font-mono text-[var(--color-text-secondary)]">
-                    {receipt.recipientLabel || (receipt.toAddress ? truncateHash(receipt.toAddress, 6) : 'Seller Vendor')}
-                  </span>
+                  <code className="flex-1 text-xs font-mono text-[var(--color-text-secondary)] bg-[var(--color-bg-primary)] px-3 py-2 rounded-lg border border-[var(--color-border-subtle)] truncate">
+                    {receipt.txHash}
+                  </code>
+                  <button
+                    onClick={copyHash}
+                    className="p-2 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-default)] transition-colors"
+                  >
+                    <Copy className={`w-3.5 h-3.5 ${copied ? 'text-[var(--color-accent-green)]' : 'text-[var(--color-text-muted)]'}`} />
+                  </button>
                 </div>
               </div>
 
-              {/* ── Transaction Details ─────────────────────────────────── */}
-              <div
-                className="rounded-2xl p-4 space-y-1"
-                style={{
-                  background: 'var(--color-bg-primary)',
-                  border: '1px solid var(--color-border-subtle)',
-                }}
-              >
-                <div className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--color-text-muted)' }}>
-                  Transaction
-                </div>
-
-                <MetricRow
-                  label="TX Hash"
-                  value={receipt.txHash ? truncateHash(receipt.txHash, 8) : 'pending'}
-                  mono
-                />
-                <MetricRow label="Route" value={receipt.route} mono color="#9fe870" />
-                <MetricRow label="Block" value={receipt.blockNumber} mono />
-                <MetricRow label="Gas Used" value={receipt.gasUsed} mono />
-                <MetricDivider />
-                <MetricRow
-                  label="Policy Decision"
-                  value={receipt.policyDecisionSummary}
-                  color="#9fe870"
-                />
-                {receipt.liveArchitectureValid !== undefined && (
-                  <MetricRow
-                    label="Architecture"
-                    value={receipt.liveArchitectureValid ? 'Valid' : 'Warning'}
-                    color={receipt.liveArchitectureValid ? '#9fe870' : '#f59e0b'}
-                  />
-                )}
+              <div className="space-y-3">
+                <DetailRow label="Service" value={receipt.serviceTitle} />
+                <DetailRow label="Amount" value={formatUSDC(receipt.amount)} highlight />
+                <DetailRow label="Token" value={receipt.currency} />
+                <DetailRow label="Direction" value={receipt.direction || 'sent'} />
+                <DetailRow label="Network" value={receipt.network} />
+                <DetailRow label="Route" value={receipt.route} />
+                <DetailRow label="Status" value={receipt.status} status />
+                {receipt.blockNumber && <DetailRow label="Block Number" value={receipt.blockNumber} mono />}
+                {receipt.gasUsed && <DetailRow label="Gas Used" value={receipt.gasUsed} mono />}
               </div>
 
-              {/* ── Settlement Metadata ─────────────────────────────────── */}
-              {receipt.settlementMetadata && Object.keys(receipt.settlementMetadata).length > 0 && (
-                <div
-                  className="rounded-2xl p-4"
-                  style={{
-                    background: 'var(--color-bg-primary)',
-                    border: '1px solid var(--color-border-subtle)',
-                  }}
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <Landmark className="w-3.5 h-3.5" style={{ color: '#14b8a6' }} />
-                    <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>
-                      Arc Settlement Metadata
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    {Object.entries(receipt.settlementMetadata).map(([k, v]) => (
-                      <MetricRow key={k} label={k} value={v} mono />
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div>
+                <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide mb-2 block">
+                  API Response (JSON)
+                </label>
+                <pre className="text-[11px] text-[var(--color-text-secondary)] leading-relaxed p-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border-subtle)] overflow-x-auto max-h-64">
+                  {formattedApiResponse || '{\n  "message": "No response payload was captured."\n}'}
+                </pre>
+              </div>
 
-              {/* ── Architecture warning ────────────────────────────────── */}
-              {receipt.architectureWarning && (
-                <div
-                  className="flex items-start gap-2 px-4 py-3 rounded-xl text-xs"
-                  style={{
-                    background: 'rgba(245,158,11,0.06)',
-                    border: '1px solid rgba(245,158,11,0.18)',
-                    color: '#f59e0b',
-                  }}
-                >
-                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                  <span>{receipt.architectureWarning}</span>
+              <div>
+                <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide mb-2 block">
+                  <Layers className="w-3 h-3 inline mr-1" />
+                  Settlement Metadata
+                </label>
+                <div className="space-y-1.5">
+                  {Object.entries(receipt.settlementMetadata).map(([key, value]) => (
+                    <div key={key} className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-[var(--color-bg-primary)] text-xs">
+                      <span className="text-[var(--color-text-muted)]">{key}</span>
+                      <span className="text-[var(--color-text-secondary)] font-mono">{value}</span>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* ── Footer: Arc proof CTA ──────────────────────────────────── */}
-            <div
-              className="flex-shrink-0 px-5 py-4"
-              style={{ borderTop: '1px solid var(--color-border-subtle)' }}
-            >
-              <ProofButton
-                arcScanUrl={receipt.arcScanUrl}
-                isDemoTx={receipt.isDemoTx}
-              />
+              <div>
+                <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide mb-2 block">
+                  <Shield className="w-3 h-3 inline mr-1" />
+                  Policy Decision
+                </label>
+                <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed p-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border-subtle)]">
+                  {receipt.policyDecisionSummary}
+                </p>
+              </div>
+
+              {(() => {
+                const href = arcScanTxLink || arcScanFallbackLink || explorerBase;
+                const label = arcScanTxLink
+                  ? 'View on ArcScan'
+                  : arcScanFallbackLink
+                    ? 'View Buyer Activity on ArcScan'
+                    : 'Open ArcScan';
+
+                return (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-[var(--color-accent-blue)]/10 border border-[var(--color-accent-blue)]/20 text-[var(--color-accent-blue)] text-sm font-semibold hover:bg-[var(--color-accent-blue)]/15 transition-colors"
+                  >
+                    <Globe className="w-4 h-4" />
+                    {label}
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                );
+              })()}
             </div>
-          </motion.aside>
+          </motion.div>
         </>
       )}
     </AnimatePresence>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  mono,
+  highlight,
+  status,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  highlight?: boolean;
+  status?: boolean;
+}) {
+  return (
+    <div className="flex justify-between items-center px-3 py-2 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border-subtle)]">
+      <span className="text-xs text-[var(--color-text-muted)]">{label}</span>
+      <span
+        className={`text-xs ${
+          highlight
+            ? 'text-[var(--color-accent-green)] font-semibold'
+            : status
+              ? 'text-[var(--color-accent-green)]'
+              : 'text-[var(--color-text-secondary)]'
+        } ${mono ? 'font-mono' : ''}`}
+      >
+        {value}
+      </span>
+    </div>
   );
 }

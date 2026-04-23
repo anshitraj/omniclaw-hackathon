@@ -1,9 +1,13 @@
-﻿import { executeDirectSettlement } from './direct';
+import { executeDirectSettlement } from './direct';
 import { executeGatewaySettlement } from './gateway';
-import type { PaymentExecutionInput, PaymentExecutionResult, PaymentRailMode, PaymentRuntimeContext } from './types';
+import type {
+  PaymentExecutionInput,
+  PaymentExecutionResult,
+  PaymentRailMode,
+  PaymentRuntimeContext,
+} from './types';
 
 export function getActivePaymentRail(context: PaymentRuntimeContext): PaymentRailMode {
-  if (!context.liveMode || !context.architectureValid) return 'demo';
   if (!context.forceDirect && context.gatewayEnabled) return 'gateway';
   return 'direct';
 }
@@ -12,29 +16,17 @@ export async function executePaymentByRail(
   input: PaymentExecutionInput,
   context: PaymentRuntimeContext
 ): Promise<PaymentExecutionResult> {
+  if (!context.liveMode || !context.architectureValid) {
+    throw new Error('Live payment execution is unavailable.');
+  }
+
   const rail = getActivePaymentRail(context);
 
   if (rail === 'gateway') {
     return executeGatewaySettlement(input);
   }
 
-  if (rail === 'direct') {
-    return executeDirectSettlement(input);
-  }
-
-  return {
-    rail: 'demo',
-    txHash: `demo:${Date.now()}`,
-    blockNumber: 'simulated',
-    gasUsed: '21000',
-    isPending: false,
-    isDemo: true,
-    legacyDirectTransfer: false,
-    buyerFundingSource: 'Demo Gateway Balance',
-    sellerSettlementDestination: 'Demo Seller Gateway Balance',
-    gatewayBalanceSource: 'Demo',
-    sellerSettlementMode: 'Demo Settlement',
-  };
+  return executeDirectSettlement(input);
 }
 
 export function resolvePaymentRuntimeContext(params: {

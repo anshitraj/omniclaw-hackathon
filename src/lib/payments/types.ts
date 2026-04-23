@@ -1,4 +1,4 @@
-﻿export type PaymentRailMode = 'gateway' | 'direct' | 'demo';
+export type PaymentRailMode = 'gateway' | 'direct';
 
 export interface PaymentExecutionInput {
   serviceId: string;
@@ -14,12 +14,11 @@ export interface PaymentExecutionResult {
   blockNumber: string;
   gasUsed: string;
   isPending: boolean;
-  isDemo: boolean;
   legacyDirectTransfer: boolean;
   buyerFundingSource: string;
   sellerSettlementDestination: string;
-  gatewayBalanceSource: 'API' | 'On-chain Fallback' | 'Demo';
-  sellerSettlementMode: 'Gateway Batch Settlement' | 'Legacy Direct Mode' | 'Demo Settlement';
+  gatewayBalanceSource: 'API' | 'On-chain Fallback';
+  sellerSettlementMode: 'Gateway Batch Settlement' | 'Legacy Direct Mode';
 }
 
 export interface PaymentRuntimeContext {

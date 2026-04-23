@@ -3,13 +3,7 @@
 import { useReducer, useCallback, useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import {
-  ArrowLeft,
-  Receipt,
-  Info,
-  RefreshCw,
-  Network,
-} from 'lucide-react';
+import { ArrowLeft, Receipt, Info, Wallet, RefreshCw, Copy, Check } from 'lucide-react';
 import Link from 'next/link';
 
 import BuyerPanel from '@/components/console/BuyerPanel';
@@ -18,128 +12,155 @@ import EventFeed from '@/components/console/EventFeed';
 import PaymentRail from '@/components/console/PaymentRail';
 import ReceiptDrawer from '@/components/transaction/ReceiptDrawer';
 import IntegrationStatusPanel from '@/components/console/IntegrationStatusPanel';
-import WalletChip from '@/components/shared/WalletChip';
-import { ModeBadge, deriveAppMode } from '@/components/shared/ModeBadge';
-import { RailBadge } from '@/components/shared/StatusPill';
-
-import { demoReducer, createInitialState } from '@/lib/demo/store';
-import { generateDemoEvents, DEMO_SERVICES } from '@/lib/demo/data';
+import { appReducer, createInitialState } from '@/lib/seed/store';
+import { SERVICE_CATALOG } from '@/lib/seed/data';
 import { truncateHash } from '@/lib/utils';
-
 import type {
   SellerService,
   IntegrationHealth,
   TransactionReceipt,
-  CombinedWalletOverview,
   WalletHistoryItem,
+  WalletSummary,
+  TimelineEvent,
 } from '@/types';
 
-const STEP_DELAY = 1200;
+const STEP_DELAY = 450;
 
 async function runLiveSequence(
   service: SellerService,
-  dispatch: (a: Parameters<typeof demoReducer>[1]) => void,
+  dispatch: (a: Parameters<typeof appReducer>[1]) => void,
   refreshWalletData: () => Promise<void>
 ) {
   dispatch({ type: 'SET_RUNNING', running: true });
 
-  const apiPromise = fetch('/api/demo/execute', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ serviceId: service.id }),
-  })
-    .then((r) => r.json())
-    .catch(() => null);
-
-  const events = generateDemoEvents(service);
-  for (let i = 0; i < events.length; i++) {
-    await new Promise((r) => setTimeout(r, STEP_DELAY));
-    const event = events[i];
-    dispatch({ type: 'ADD_EVENT', event });
-    dispatch({ type: 'SET_STATE', state: event.state });
-    if (event.state === 'approved') {
-      dispatch({
-        type: 'SET_POLICY_RESULT',
-        result: {
-          approved: true,
-          policyId: 'pol_fpe_001',
-          policyName: 'Default Buyer Spend Policy',
-          checks: [
-            { name: 'Budget Cap Check', passed: true, reason: `${service.price} USDC within budget`, constraint: '<= 10.00 USDC' },
-            { name: 'Recipient Allowlist', passed: true, reason: 'Approved vendor', constraint: 'Allowlisted only' },
-            { name: 'Network Restriction', passed: true, reason: 'Arc Testnet approved', constraint: 'Arc Testnet only' },
-            { name: 'Per-Transaction Limit', passed: true, reason: `${service.price} USDC below limit`, constraint: '<= 5.00 USDC' },
-            { name: 'No Raw Key Exposure', passed: true, reason: 'Circle programmable wallet', constraint: 'Zero key exposure' },
-          ],
-          summary: 'All 5 policy checks passed. Transaction authorized.',
-          timestamp: new Date().toISOString(),
-          budgetRemaining: 10.0 - service.price,
-        },
-      });
-    }
-  }
-
-  const apiResult = await apiPromise;
-  if (apiResult?.success && apiResult?.data?.receipt) {
-    const receipt = apiResult.data.receipt as TransactionReceipt;
-    dispatch({ type: 'SET_RECEIPT', receipt });
-    dispatch({
-      type: 'ADD_EVENT',
-      event: {
-        id: `evt_settle_${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        source: 'settlement',
-        title: 'Seller Settlement Accepted',
-        description: 'Gateway batch settlement accepted with Arc proof and buyer/seller routing metadata.',
-        state: 'fulfilled',
-        metadata: {
-          buyerGateway: receipt.fromAddress ? truncateHash(receipt.fromAddress, 6) : 'n/a',
-          sellerGateway: receipt.toAddress ? truncateHash(receipt.toAddress, 6) : 'n/a',
-          rail: String(receipt.settlementMetadata?.paymentRail || 'Circle Gateway'),
-          token: receipt.currency,
-          amount: String(receipt.amount),
-          txHash: receipt.txHash ? truncateHash(receipt.txHash, 6) : 'n/a',
-        },
-      },
+  try {
+    const response = await fetch('/api/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serviceId: service.id }),
     });
-    await refreshWalletData();
-  }
+    const result = await response.json().catch(() => null);
+    if (!response.ok || !result?.success) {
+      throw new Error(result?.error || `Execute failed (${response.status})`);
+    }
 
-  dispatch({ type: 'SET_RUNNING', running: false });
+    const events: TimelineEvent[] = Array.isArray(result?.data?.events) ? result.data.events : [];
+    for (const event of events) {
+      await new Promise((r) => setTimeout(r, STEP_DELAY));
+      dispatch({ type: 'ADD_EVENT', event });
+      dispatch({ type: 'SET_STATE', state: event.state });
+      if (event.state === 'policy_checking' && result?.data?.policyResult) {
+        dispatch({ type: 'SET_POLICY_RESULT', result: result.data.policyResult });
+      }
+    }
+
+    if (result?.data?.policyResult) {
+      dispatch({ type: 'SET_POLICY_RESULT', result: result.data.policyResult });
+    }
+
+    if (result?.data?.receipt) {
+      dispatch({ type: 'SET_RECEIPT', receipt: result.data.receipt as TransactionReceipt });
+    }
+
+    await refreshWalletData();
+  } catch (error) {
+    dispatch({ type: 'SET_ERROR', error: String(error) });
+  } finally {
+    dispatch({ type: 'SET_RUNNING', running: false });
+  }
+}
+
+function WalletChip({
+  label,
+  address,
+  usdc,
+  loading,
+  warning,
+  copyId,
+}: {
+  label: string;
+  address?: string | null;
+  usdc?: number;
+  loading: boolean;
+  warning?: boolean;
+  copyId: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const copyAddress = useCallback(async () => {
+    if (!address) return;
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    } catch {
+      // no-op
+    }
+  }, [address]);
+
+  return (
+    <div
+      className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono bg-[var(--color-bg-primary)] border border-[var(--color-border-subtle)]"
+      title={address || `${label} not configured`}
+    >
+      <div
+        className={`w-1.5 h-1.5 rounded-full ${
+          warning ? 'bg-[var(--color-accent-red)]' : 'bg-[var(--color-accent-green)]'
+        }`}
+      />
+      <Wallet className="w-3 h-3 text-[var(--color-text-muted)]" />
+      <span className="text-[var(--color-text-secondary)]">{label}</span>
+      <span className="text-[var(--color-border-subtle)]">|</span>
+      <span className="text-[var(--color-text-secondary)]">{address ? truncateHash(address, 5) : 'n/a'}</span>
+      <span className="text-[var(--color-border-subtle)]">|</span>
+      <span className="text-[var(--color-accent-green)]">{loading ? '...' : (usdc || 0).toFixed(2)} USDC</span>
+      <button
+        id={copyId}
+        onClick={copyAddress}
+        disabled={!address}
+        className="ml-1 p-0.5 rounded hover:bg-[var(--color-bg-hover)] disabled:opacity-40"
+        title={address ? `Copy full ${label} address` : `${label} address not available`}
+        aria-label={`Copy ${label} address`}
+      >
+        {copied ? (
+          <Check className="w-3 h-3 text-[var(--color-accent-green)]" />
+        ) : (
+          <Copy className="w-3 h-3 text-[var(--color-text-muted)]" />
+        )}
+      </button>
+    </div>
+  );
 }
 
 function ConsoleContent() {
   const searchParams = useSearchParams();
   const autorun = searchParams.get('autorun') === 'true';
 
-  const [state, dispatch] = useReducer(demoReducer, undefined, createInitialState);
+  const [state, dispatch] = useReducer(appReducer, undefined, createInitialState);
   const [receiptOpen, setReceiptOpen] = useState(false);
 
-  const [walletOverview, setWalletOverview] = useState<CombinedWalletOverview | null>(null);
+  const [buyerWalletSummary, setBuyerWalletSummary] = useState<WalletSummary | null>(null);
   const [buyerHistory, setBuyerHistory] = useState<WalletHistoryItem[]>([]);
-  const [sellerHistory, setSellerHistory] = useState<WalletHistoryItem[]>([]);
   const [walletLoading, setWalletLoading] = useState(true);
 
   const fetchWalletData = useCallback(async () => {
     try {
       setWalletLoading(true);
-      const [overviewRes, buyerHistoryRes, sellerHistoryRes] = await Promise.all([
-        fetch('/api/integrations/circle/wallet-overview', { cache: 'no-store' }),
+      const [buyerWalletRes, buyerHistoryRes] = await Promise.all([
+        fetch('/api/integrations/circle/buyer-wallet', { cache: 'no-store' }),
         fetch('/api/integrations/circle/buyer-history?limit=20', { cache: 'no-store' }),
-        fetch('/api/integrations/circle/seller-history?limit=20', { cache: 'no-store' }),
       ]);
 
-      if (overviewRes.ok) {
-        const json = await overviewRes.json();
-        if (json.success) setWalletOverview(json.data as CombinedWalletOverview);
+      if (buyerWalletRes.ok) {
+        const json = await buyerWalletRes.json();
+        if (json.success) {
+          setBuyerWalletSummary(json.data as WalletSummary);
+          dispatch({ type: 'SET_AGENT_BUDGET_CAP', budgetCap: json.data?.budgetCap ?? null });
+        }
       }
       if (buyerHistoryRes.ok) {
         const json = await buyerHistoryRes.json();
         if (json.success) setBuyerHistory(json.data as WalletHistoryItem[]);
-      }
-      if (sellerHistoryRes.ok) {
-        const json = await sellerHistoryRes.json();
-        if (json.success) setSellerHistory(json.data as WalletHistoryItem[]);
       }
     } finally {
       setWalletLoading(false);
@@ -163,7 +184,7 @@ function ConsoleContent() {
           }
         }
       } catch {
-        /* keep demo state */
+        // keep current state
       }
     }
 
@@ -193,14 +214,13 @@ function ConsoleContent() {
 
   useEffect(() => {
     if (autorun && !state.isRunning && state.transactionState === 'idle') {
-      const firstService = DEMO_SERVICES[0];
+      const firstService = SERVICE_CATALOG[0];
       dispatch({ type: 'SELECT_SERVICE', service: firstService });
       setTimeout(async () => {
         await runLiveSequence(firstService, dispatch, fetchWalletData);
       }, 500);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autorun]);
+  }, [autorun, state.isRunning, state.transactionState, fetchWalletData]);
 
   useEffect(() => {
     if (state.receipt && state.transactionState === 'fulfilled') {
@@ -208,140 +228,64 @@ function ConsoleContent() {
     }
   }, [state.receipt, state.transactionState]);
 
-  const appMode = deriveAppMode(state.integrationHealth, walletOverview);
-  const activeRail = state.integrationHealth.activePaymentRail || 'demo';
-
-  const architectureWarning = walletOverview?.architecture.liveArchitectureValid
-    ? undefined
-    : walletOverview?.architecture.warnings.find((w) => w.includes('same wallet'));
-
-  const buyerConfigured = Boolean(walletOverview?.buyer?.configured ?? walletOverview?.buyer?.address);
-  const sellerConfigured = Boolean(walletOverview?.seller?.configured ?? walletOverview?.seller?.address);
+  const modeBadge = 'LIVE';
+  const modeBadgeColor = 'var(--color-accent-green)';
 
   return (
-    <div className="h-screen flex flex-col" style={{ background: 'var(--nb-dark)' }}>
-
-      {/* ── Neobrutalist Navbar ─────────────────────────────────────────── */}
-      <header className="nb-navbar flex-shrink-0">
-        {/* Left: Back + Brand */}
-        <div className="flex items-stretch gap-0">
-          <Link
-            href="/"
-            id="nav-back-btn"
-            className="flex items-center justify-center w-9 h-9 border-r-2 hover:bg-[rgba(255,255,255,0.04)] transition-colors"
-            style={{ borderColor: 'rgba(255,255,255,0.1)', color: 'var(--color-text-muted)' }}
-            aria-label="Back to landing page"
-          >
-            <ArrowLeft className="w-4 h-4" />
+    <div className="h-screen flex flex-col bg-[var(--color-bg-primary)]">
+      <header className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)]">
+        <div className="flex items-center gap-4">
+          <Link href="/" className="p-2 rounded-lg hover:bg-[var(--color-bg-hover)] transition-colors">
+            <ArrowLeft className="w-4 h-4 text-[var(--color-text-muted)]" />
           </Link>
-
-          {/* Brand block with yellow left-bar */}
-          <div
-            className="flex items-center gap-3 pl-4 pr-6 h-full border-r-2"
-            style={{ borderColor: 'rgba(255,255,255,0.1)' }}
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full animate-pulse-slow" style={{ backgroundColor: modeBadgeColor }} />
+            <span className="text-sm font-semibold text-[var(--color-text-primary)]">OmniClaw Console</span>
+          </div>
+          <span
+            className="text-xs px-2 py-0.5 rounded-full font-mono"
+            style={{ backgroundColor: `${modeBadgeColor}15`, color: modeBadgeColor }}
           >
-            <div className="flex flex-col">
-              <span
-                className="text-[13px] font-black uppercase tracking-widest leading-none"
-                style={{ color: '#FDC800', letterSpacing: '0.12em' }}
-              >
-                OmniClaw
-              </span>
-              <span
-                className="text-[9px] font-mono font-semibold uppercase tracking-widest"
-                style={{ color: 'var(--color-text-muted)', letterSpacing: '0.14em' }}
-              >
-                Console v1.0
-              </span>
-            </div>
-          </div>
-
-          {/* Status badges */}
-          <div className="flex items-center gap-2 pl-4">
-            <ModeBadge mode={appMode} rail={activeRail as 'gateway' | 'direct' | 'demo'} showTooltip />
-            <div className="hidden sm:flex">
-              <RailBadge rail={activeRail} />
-            </div>
-            <span
-              className="hidden md:inline-flex items-center gap-1.5 nb-badge nb-badge-indigo"
-            >
-              <Network className="w-2.5 h-2.5" />
-              Arc Testnet
-            </span>
-          </div>
+            {modeBadge}
+          </span>
         </div>
 
-        {/* Right: Wallets + Receipt + Refresh — fills remaining space, refresh flush right */}
-        <div className="flex-1 flex items-center justify-end">
+        <div className="flex items-center gap-2">
           {state.receipt && (
             <button
-              id="nav-view-receipt-btn"
               onClick={() => setReceiptOpen(true)}
-              className="btn-secondary flex items-center gap-1.5 text-[10px] py-1.5 px-3 mr-3"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--color-accent-green)]/10 text-[var(--color-accent-green)] border border-[var(--color-accent-green)]/20 hover:bg-[var(--color-accent-green)]/15 transition-colors"
             >
               <Receipt className="w-3 h-3" />
-              Settlement Proof
+              View Receipt
             </button>
           )}
 
-          <div className="flex items-stretch h-full divide-x-2" style={{ divideColor: 'rgba(255,255,255,0.08)' }}>
-            <div className="flex items-center px-3">
-              <WalletChip
-                label="Buyer"
-                actor="buyer"
-                address={walletOverview?.buyer?.address}
-                usdc={walletOverview?.buyer?.usdcBalance}
-                eurc={walletOverview?.buyer?.eurcBalance}
-                loading={walletLoading}
-                warning={!walletOverview?.architecture?.liveArchitectureValid && Boolean(walletOverview)}
-                warningText={architectureWarning}
-                configured={buyerConfigured}
-                copyId="copy-buyer-wallet-chip"
-              />
-            </div>
+          <WalletChip
+            label="Buyer Gateway Balance"
+            address={buyerWalletSummary?.address}
+            usdc={buyerWalletSummary?.usdcBalance}
+            loading={walletLoading}
+            warning={!buyerWalletSummary?.connected}
+            copyId="copy-buyer-wallet-chip"
+          />
 
-            <div className="flex items-center px-3">
-              <WalletChip
-                label="Seller"
-                actor="seller"
-                address={walletOverview?.seller?.address}
-                usdc={walletOverview?.seller?.usdcBalance}
-                eurc={walletOverview?.seller?.eurcBalance}
-                loading={walletLoading}
-                warning={!walletOverview?.architecture?.liveArchitectureValid && Boolean(walletOverview)}
-                warningText={architectureWarning}
-                configured={sellerConfigured}
-                copyId="copy-seller-wallet-chip"
-              />
-            </div>
-
-            {/* Refresh — flush to right edge, full height */}
-            <button
-              id="nav-refresh-btn"
-              onClick={fetchWalletData}
-              className="flex items-center justify-center w-11 hover:bg-[rgba(255,255,255,0.05)] transition-colors"
-              style={{ color: 'var(--color-text-muted)' }}
-              title="Refresh wallet balances"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${walletLoading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
+          <button
+            onClick={fetchWalletData}
+            className="p-2 rounded-lg hover:bg-[var(--color-bg-hover)] transition-colors"
+            title="Refresh buyer wallet balances and history"
+          >
+            <RefreshCw className="w-4 h-4 text-[var(--color-text-muted)]" />
+          </button>
         </div>
       </header>
 
-      {/* ── Payment Rail ───────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 border-b border-[rgba(255,255,255,0.07)]">
-        <PaymentRail currentState={state.transactionState} mode={appMode} />
+      <div className="flex-shrink-0 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)]">
+        <PaymentRail currentState={state.transactionState} />
       </div>
 
-      {/* ── Main 3-column layout ───────────────────────────────────────── */}
       <div className="flex-1 flex min-h-0">
-
-        {/* Left: Buyer Agent Panel */}
-        <div
-          className="w-80 flex-shrink-0 border-r-2 flex flex-col overflow-hidden"
-          style={{ background: 'var(--nb-dark-2)', borderColor: 'rgba(255,255,255,0.08)' }}
-        >
+        <div className="w-80 flex-shrink-0 border-r border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)] overflow-hidden flex flex-col">
           <div className="flex-1 overflow-hidden">
             <BuyerPanel
               agent={state.agent}
@@ -351,60 +295,39 @@ function ConsoleContent() {
               onExecute={handleRun}
               onReset={handleReset}
               isRunning={state.isRunning}
-              walletSummary={walletOverview?.buyer || null}
+              walletSummary={buyerWalletSummary}
               history={buyerHistory}
               onRefreshWalletData={fetchWalletData}
-              architectureWarning={architectureWarning}
-              appMode={appMode}
-              policyResult={state.policyResult}
             />
           </div>
           <IntegrationStatusPanel health={state.integrationHealth} />
         </div>
 
-        {/* Center: Event Feed */}
-        <div
-          className="flex-1 min-w-0 overflow-hidden"
-          style={{ background: 'var(--nb-dark)' }}
-        >
-          <EventFeed events={state.events} appMode={appMode} />
+        <div className="flex-1 min-w-0 bg-[var(--color-bg-primary)] overflow-hidden">
+          <EventFeed events={state.events} />
         </div>
 
-        {/* Right: Vendor / Seller Panel */}
-        <div
-          className="w-96 flex-shrink-0 border-l-2 overflow-hidden"
-          style={{ background: 'var(--nb-dark-2)', borderColor: 'rgba(255,255,255,0.08)' }}
-        >
+        <div className="w-96 flex-shrink-0 border-l border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)] overflow-hidden">
           <SellerPanel
-            services={DEMO_SERVICES}
+            services={SERVICE_CATALOG}
             selectedService={state.selectedService}
             onSelectService={handleSelectService}
             transactionState={state.transactionState}
-            walletSummary={walletOverview?.seller || null}
-            history={sellerHistory}
-            onRefreshWalletData={fetchWalletData}
-            appMode={appMode}
           />
         </div>
       </div>
 
-      {/* ── Error Bar ─────────────────────────────────────────────────── */}
       {state.error && (
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="flex-shrink-0 flex items-center gap-2 px-6 py-3 border-t"
-          style={{
-            background: 'rgba(239,68,68,0.06)',
-            borderColor: 'rgba(239,68,68,0.2)',
-          }}
+          className="flex-shrink-0 flex items-center gap-2 px-6 py-3 bg-[var(--color-accent-red)]/10 border-t border-[var(--color-accent-red)]/20"
         >
           <Info className="w-4 h-4 text-[var(--color-accent-red)]" />
           <span className="text-xs text-[var(--color-accent-red)]">{state.error}</span>
         </motion.div>
       )}
 
-      {/* ── Receipt Drawer ────────────────────────────────────────────── */}
       <ReceiptDrawer receipt={state.receipt} isOpen={receiptOpen} onClose={() => setReceiptOpen(false)} />
     </div>
   );
@@ -414,18 +337,10 @@ export default function ConsolePage() {
   return (
     <Suspense
       fallback={
-        <div
-          className="h-screen flex items-center justify-center"
-          style={{ background: 'var(--color-bg-primary)' }}
-        >
+        <div className="h-screen flex items-center justify-center bg-[var(--color-bg-primary)]">
           <div className="flex flex-col items-center gap-4">
-            <div
-              className="w-9 h-9 rounded-full border-2 border-t-transparent animate-spin"
-              style={{ borderColor: '#9fe870', borderTopColor: 'transparent' }}
-            />
-            <span className="text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
-              Loading OmniClaw Console…
-            </span>
+            <div className="w-8 h-8 border-2 border-[var(--color-accent-violet)] border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-[var(--color-text-muted)]">Loading console...</span>
           </div>
         </div>
       }

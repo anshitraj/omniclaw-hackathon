@@ -1,9 +1,8 @@
-﻿import { NextResponse } from 'next/server';
-import { getCombinedWalletOverview } from '@/lib/integrations/circle/client';
+import { NextResponse } from 'next/server';
+import { getWalletSummaryForActor } from '@/lib/integrations/circle/wallet-utils';
 
 export async function GET() {
-  const overview = await getCombinedWalletOverview();
-  const buyer = overview.buyer;
+  const buyer = await getWalletSummaryForActor('buyer');
 
   return NextResponse.json({
     connected: buyer.connected,
@@ -11,9 +10,8 @@ export async function GET() {
     addressShort: buyer.addressShort,
     walletId: buyer.walletId,
     balance: buyer.usdcBalance.toFixed(2),
-    eurcBalance: buyer.eurcBalance.toFixed(2),
     currency: 'USDC',
     network: buyer.blockchain,
-    architecture: overview.architecture,
+    warnings: buyer.warnings || [],
   });
 }
