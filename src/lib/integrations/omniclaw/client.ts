@@ -3,7 +3,9 @@ import type { PolicyCheckResult, SellerService, TransactionReceipt } from '@/typ
 const DEFAULT_OMNICLAW_API_URL = 'http://localhost:8080';
 const OMNICLAW_API_URL = process.env.OMNICLAW_API_URL || DEFAULT_OMNICLAW_API_URL;
 const OMNICLAW_API_TOKEN = process.env.OMNICLAW_API_TOKEN;
-const ARC_EXPLORER_URL = process.env.ARC_EXPLORER_URL || 'https://testnet.arcscan.app';
+const CIRCLE_GATEWAY_API_KEY = process.env.CIRCLE_GATEWAY_API_KEY || process.env.CIRCLE_API_KEY;
+const CIRCLE_GATEWAY_BASE_URL =
+  process.env.CIRCLE_GATEWAY_BASE_URL || 'https://gateway-api-testnet.circle.com';
 
 export function isOmniClawSdkConfigured(): boolean {
   return false;
@@ -114,13 +116,38 @@ export type OmniClawBalanceDetail = {
   walletId: string | null;
   gatewayBalance: number;
   gatewayOnchainBalance: number;
-  circleWalletBalance: number;
-  gatewayBalanceAtomic: number;
-  gatewayOnchainBalanceAtomic: number;
-  paymentGatewayBalance: number | null;
   status: string;
   warnings: string[];
-  lastUpdated: string;
+};
+
+type CircleBalanceRow = {
+  domain: number;
+  depositor: string;
+  balance: string;
+};
+
+type CircleDepositRow = {
+  depositor: string;
+  domain: number;
+  transactionHash?: string;
+  amount: string;
+  status: string;
+  blockTimestamp?: string;
+};
+
+export type OmniClawGatewayLedger = {
+  expectedNetwork: string;
+  expectedDomain: number;
+  expectedDomainBalance: string | null;
+  balancesByDomain: CircleBalanceRow[];
+  deposits: CircleDepositRow[];
+  pendingDepositsCount: number;
+};
+
+export type OmniClawGatewayLedgerSourceStatus = {
+  omniclawBalanceDetail: 'ok' | 'error';
+  circleBalances: 'ok' | 'error' | 'not_configured';
+  circleDeposits: 'ok' | 'error' | 'not_configured';
 };
 
 function toFiniteNumber(value: unknown, fallback = 0): number {
@@ -146,6 +173,76 @@ function toSafeStatus(payStatus: unknown, hasOnchainTx: boolean): TransactionRec
     return 'failed';
   }
   return hasOnchainTx ? 'confirmed' : 'pending';
+}
+
+function toCaip2Network(value: string | undefined): string {
+  if (!value) return 'eip155:5042002';
+  if (value.includes(':')) return value;
+
+  const normalized = value.trim().toUpperCase();
+  const map: Record<string, string> = {
+    'ARC-TESTNET': 'eip155:5042002',
+    'ETH-SEPOLIA': 'eip155:11155111',
+    ETHEREUM: 'eip155:1',
+    BASE: 'eip155:8453',
+    'BASE-SEPOLIA': 'eip155:84532',
+    POLYGON: 'eip155:137',
+    'POLYGON-AMOY': 'eip155:80002',
+    OPTIMISM: 'eip155:10',
+    ARBITRUM: 'eip155:42161',
+    AVALANCHE: 'eip155:43114',
+  };
+  return map[normalized] || 'eip155:5042002';
+}
+
+function toCircleDomain(caip2Network: string): number {
+  const map: Record<string, number> = {
+    'eip155:1': 0,
+    'eip155:11155111': 0,
+    'eip155:43114': 1,
+    'eip155:43113': 1,
+    'eip155:10': 2,
+    'eip155:11155420': 2,
+    'eip155:42161': 3,
+    'eip155:421614': 3,
+    'eip155:8453': 6,
+    'eip155:84532': 6,
+    'eip155:137': 7,
+    'eip155:80002': 7,
+    'eip155:130': 10,
+    'eip155:1301': 10,
+    'eip155:146': 13,
+    'eip155:14601': 13,
+    'eip155:480': 14,
+    'eip155:4801': 14,
+    'eip155:32': 16,
+    'eip155:1328': 16,
+    'eip155:9649': 19,
+    'eip155:998': 19,
+    'eip155:5042002': 26,
+  };
+  return map[caip2Network] ?? 0;
+}
+
+async function postCircleGateway(path: string, body: Record<string, unknown>) {
+  if (!CIRCLE_GATEWAY_API_KEY) {
+    throw new Error('CIRCLE_GATEWAY_API_KEY is not configured');
+  }
+  const res = await fetch(`${CIRCLE_GATEWAY_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${CIRCLE_GATEWAY_API_KEY}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = typeof payload?.message === 'string' ? payload.message : JSON.stringify(payload);
+    throw new Error(`${path} failed (${res.status}): ${detail}`);
+  }
+  return payload;
 }
 
 function parseApiResponsePayload(responseData: unknown): unknown {
@@ -209,14 +306,9 @@ export async function getBalanceDetail(): Promise<OmniClawBalanceDetail> {
   const payload = await getOmniClaw('/api/v1/balance-detail');
   const gatewayBalance = toFiniteNumber(payload?.gateway_balance, 0);
   const gatewayOnchainBalance = toFiniteNumber(payload?.gateway_onchain_balance, 0);
-  const circleWalletBalance = toFiniteNumber(payload?.circle_wallet_balance, 0);
-  const paymentGatewayBalance =
-    payload?.payment_gateway_balance === null || payload?.payment_gateway_balance === undefined
-      ? null
-      : toFiniteNumber(payload?.payment_gateway_balance, 0);
   const warnings: string[] = [];
   if (Math.abs(gatewayBalance - gatewayOnchainBalance) > 0.000001) {
-    warnings.push('Gateway API ledger and on-chain available balance differ.');
+    warnings.push('OmniClaw API ledger and on-chain available balance differ.');
   }
 
   return {
@@ -224,13 +316,8 @@ export async function getBalanceDetail(): Promise<OmniClawBalanceDetail> {
     walletId: payload?.wallet_id ?? null,
     gatewayBalance,
     gatewayOnchainBalance,
-    circleWalletBalance,
-    gatewayBalanceAtomic: Number(payload?.gateway_balance_atomic || 0),
-    gatewayOnchainBalanceAtomic: Number(payload?.gateway_onchain_balance_atomic || 0),
-    paymentGatewayBalance,
     status: 'connected',
     warnings,
-    lastUpdated: new Date().toISOString(),
   };
 }
 
@@ -254,6 +341,116 @@ export async function getPolicyBudgetCap(): Promise<number | null> {
 
   const parsed = toFiniteNumber(dailyMax, Number.NaN);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+export async function getGatewayLedgerData(
+  detail: OmniClawBalanceDetail
+): Promise<{
+  gatewayLedger: OmniClawGatewayLedger | null;
+  circleLedgerError?: string;
+  sourceStatus: OmniClawGatewayLedgerSourceStatus;
+}> {
+  const sourceStatus: OmniClawGatewayLedgerSourceStatus = {
+    omniclawBalanceDetail: detail.address ? 'ok' : 'error',
+    circleBalances: CIRCLE_GATEWAY_API_KEY ? 'ok' : 'not_configured',
+    circleDeposits: CIRCLE_GATEWAY_API_KEY ? 'ok' : 'not_configured',
+  };
+
+  if (!CIRCLE_GATEWAY_API_KEY) {
+    return {
+      gatewayLedger: null,
+      circleLedgerError:
+        'Circle Gateway API key is not configured. Set CIRCLE_GATEWAY_API_KEY (or CIRCLE_API_KEY).',
+      sourceStatus,
+    };
+  }
+
+  if (!detail.address) {
+    sourceStatus.omniclawBalanceDetail = 'error';
+    sourceStatus.circleBalances = 'error';
+    sourceStatus.circleDeposits = 'error';
+    return {
+      gatewayLedger: null,
+      circleLedgerError: 'Missing OmniClaw EOA address from /api/v1/balance-detail.',
+      sourceStatus,
+    };
+  }
+
+  const expectedNetwork = toCaip2Network(process.env.OMNICLAW_NETWORK);
+  const expectedDomain = toCircleDomain(expectedNetwork);
+
+  try {
+    const [balancesPayload, depositsPayload] = await Promise.all([
+      postCircleGateway('/v1/balances', {
+        token: 'USDC',
+        sources: [{ network: expectedNetwork, depositor: detail.address }],
+      }),
+      postCircleGateway('/v1/deposits', {
+        token: 'USDC',
+        sources: [{ depositor: detail.address, domain: expectedDomain }],
+      }),
+    ]);
+
+    const balancesByDomain: CircleBalanceRow[] = Array.isArray(balancesPayload?.balances)
+      ? balancesPayload.balances.map((row: unknown) => {
+          const record = row as Record<string, unknown>;
+          return {
+            domain: toFiniteNumber(record?.domain, 0),
+            depositor: String(record?.depositor || ''),
+            balance: String(record?.balance || '0'),
+          };
+        })
+      : [];
+
+    const deposits: CircleDepositRow[] = Array.isArray(depositsPayload?.deposits)
+      ? depositsPayload.deposits.map((row: unknown) => {
+          const record = row as Record<string, unknown>;
+          return {
+            depositor: String(record?.depositor || ''),
+            domain: toFiniteNumber(record?.domain, expectedDomain),
+            transactionHash:
+              typeof record?.transactionHash === 'string' ? record.transactionHash : undefined,
+            amount: String(record?.amount || '0'),
+            status: String(record?.status || ''),
+            blockTimestamp:
+              typeof record?.blockTimestamp === 'string' ? record.blockTimestamp : undefined,
+          };
+        })
+      : [];
+
+    const expectedDomainBalance =
+      balancesByDomain.find((row) => row.domain === expectedDomain)?.balance ?? null;
+    const pendingDepositsCount = deposits.filter(
+      (row) => row.status.trim().toLowerCase() === 'pending'
+    ).length;
+
+    return {
+      gatewayLedger: {
+        expectedNetwork,
+        expectedDomain,
+        expectedDomainBalance,
+        balancesByDomain,
+        deposits,
+        pendingDepositsCount,
+      },
+      sourceStatus,
+    };
+  } catch (error) {
+    sourceStatus.circleBalances = 'error';
+    sourceStatus.circleDeposits = 'error';
+    return {
+      gatewayLedger: {
+        expectedNetwork,
+        expectedDomain,
+        expectedDomainBalance: null,
+        balancesByDomain: [],
+        deposits: [],
+        pendingDepositsCount: 0,
+      },
+      circleLedgerError: String(error),
+      sourceStatus,
+    };
+  }
 }
 
 export async function executePayment(
@@ -302,11 +499,9 @@ export async function executePayment(
     recipientEndpoint: service.endpoint,
     amount,
     currency: service.currency,
-    network: 'Arc Testnet',
+    network: 'OmniClaw',
     route: 'OmniClaw Buyer x402',
     status,
-    proofLink: hasOnchainTx ? `${ARC_EXPLORER_URL}/tx/${txHash}` : null,
-    arcScanUrl: hasOnchainTx ? `${ARC_EXPLORER_URL}/tx/${txHash}` : null,
     timestamp: new Date().toISOString(),
     policyDecisionSummary: 'OmniClaw policy checks passed and payment executed.',
     settlementMetadata: {

@@ -3,12 +3,10 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
-  ExternalLink,
   CheckCircle2,
   Copy,
   Shield,
   Layers,
-  Globe,
   Receipt,
 } from 'lucide-react';
 import type { TransactionReceipt } from '@/types';
@@ -41,29 +39,7 @@ export default function ReceiptDrawer({ receipt, isOpen, onClose }: ReceiptDrawe
     }
   })();
 
-  const explorerBase = 'https://testnet.arcscan.app';
   const txHash = typeof receipt?.txHash === 'string' ? receipt.txHash : '';
-  const hasHashLikeTx = txHash.startsWith('0x') && txHash.length >= 12;
-  const arcScanTxLink =
-    receipt?.arcScanUrl || receipt?.proofLink || (hasHashLikeTx ? `${explorerBase}/tx/${txHash}` : null);
-
-  const fallbackAddress = (() => {
-    const envelope = receipt?.payEnvelope as Record<string, unknown> | undefined;
-    const api = receipt?.apiResponse as Record<string, unknown> | undefined;
-    const candidates = [
-      envelope?.buyer_address,
-      envelope?.payment_address,
-      envelope?.payer,
-      api?.buyer_address,
-      api?.payment_address,
-      receipt?.fromAddress,
-    ];
-    for (const c of candidates) {
-      if (typeof c === 'string' && /^0x[a-fA-F0-9]{40}$/.test(c)) return c;
-    }
-    return null;
-  })();
-  const arcScanFallbackLink = fallbackAddress ? `${explorerBase}/address/${fallbackAddress}` : null;
 
   return (
     <AnimatePresence>
@@ -126,8 +102,6 @@ export default function ReceiptDrawer({ receipt, isOpen, onClose }: ReceiptDrawe
               <div className="space-y-3">
                 <DetailRow label="Service" value={receipt.serviceTitle} />
                 <DetailRow label="Amount" value={formatUSDC(receipt.amount)} highlight />
-                <DetailRow label="Token" value={receipt.currency} />
-                <DetailRow label="Direction" value={receipt.direction || 'sent'} />
                 <DetailRow label="Network" value={receipt.network} />
                 <DetailRow label="Route" value={receipt.route} />
                 <DetailRow label="Status" value={receipt.status} status />
@@ -169,27 +143,6 @@ export default function ReceiptDrawer({ receipt, isOpen, onClose }: ReceiptDrawe
                 </p>
               </div>
 
-              {(() => {
-                const href = arcScanTxLink || arcScanFallbackLink || explorerBase;
-                const label = arcScanTxLink
-                  ? 'View on ArcScan'
-                  : arcScanFallbackLink
-                    ? 'View Buyer Activity on ArcScan'
-                    : 'Open ArcScan';
-
-                return (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-[var(--color-accent-blue)]/10 border border-[var(--color-accent-blue)]/20 text-[var(--color-accent-blue)] text-sm font-semibold hover:bg-[var(--color-accent-blue)]/15 transition-colors"
-                  >
-                    <Globe className="w-4 h-4" />
-                    {label}
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                );
-              })()}
             </div>
           </motion.div>
         </>

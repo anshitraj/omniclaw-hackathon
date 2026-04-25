@@ -19,18 +19,13 @@ import type {
   SellerService,
   IntegrationHealth,
   TransactionReceipt,
-  WalletHistoryItem,
   WalletSummary,
   TimelineEvent,
 } from '@/types';
 
 const STEP_DELAY = 450;
 
-async function runLiveSequence(
-  service: SellerService,
-  dispatch: (a: Parameters<typeof appReducer>[1]) => void,
-  refreshWalletData: () => Promise<void>
-) {
+async function runLiveSequence(service: SellerService, dispatch: (a: Parameters<typeof appReducer>[1]) => void) {
   dispatch({ type: 'SET_RUNNING', running: true });
 
   try {
@@ -62,7 +57,6 @@ async function runLiveSequence(
       dispatch({ type: 'SET_RECEIPT', receipt: result.data.receipt as TransactionReceipt });
     }
 
-    await refreshWalletData();
   } catch (error) {
     dispatch({ type: 'SET_ERROR', error: String(error) });
   } finally {
@@ -140,16 +134,12 @@ function ConsoleContent() {
   const [receiptOpen, setReceiptOpen] = useState(false);
 
   const [buyerWalletSummary, setBuyerWalletSummary] = useState<WalletSummary | null>(null);
-  const [buyerHistory, setBuyerHistory] = useState<WalletHistoryItem[]>([]);
-  const [walletLoading, setWalletLoading] = useState(true);
+  const [walletLoading, setWalletLoading] = useState(false);
 
   const fetchWalletData = useCallback(async () => {
     try {
       setWalletLoading(true);
-      const [buyerWalletRes, buyerHistoryRes] = await Promise.all([
-        fetch('/api/integrations/circle/buyer-wallet', { cache: 'no-store' }),
-        fetch('/api/integrations/circle/buyer-history?limit=20', { cache: 'no-store' }),
-      ]);
+      const buyerWalletRes = await fetch('/api/integrations/omniclaw/balance', { cache: 'no-store' });
 
       if (buyerWalletRes.ok) {
         const json = await buyerWalletRes.json();
@@ -158,20 +148,10 @@ function ConsoleContent() {
           dispatch({ type: 'SET_AGENT_BUDGET_CAP', budgetCap: json.data?.budgetCap ?? null });
         }
       }
-      if (buyerHistoryRes.ok) {
-        const json = await buyerHistoryRes.json();
-        if (json.success) setBuyerHistory(json.data as WalletHistoryItem[]);
-      }
     } finally {
       setWalletLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    fetchWalletData();
-    const interval = setInterval(fetchWalletData, 20_000);
-    return () => clearInterval(interval);
-  }, [fetchWalletData]);
 
   useEffect(() => {
     async function fetchHealth() {
@@ -204,8 +184,8 @@ function ConsoleContent() {
 
   const handleRun = useCallback(async () => {
     if (!state.selectedService || state.isRunning) return;
-    await runLiveSequence(state.selectedService, dispatch, fetchWalletData);
-  }, [state.selectedService, state.isRunning, fetchWalletData]);
+    await runLiveSequence(state.selectedService, dispatch);
+  }, [state.selectedService, state.isRunning]);
 
   const handleReset = useCallback(() => {
     dispatch({ type: 'RESET' });
@@ -217,10 +197,10 @@ function ConsoleContent() {
       const firstService = SERVICE_CATALOG[0];
       dispatch({ type: 'SELECT_SERVICE', service: firstService });
       setTimeout(async () => {
-        await runLiveSequence(firstService, dispatch, fetchWalletData);
+        await runLiveSequence(firstService, dispatch);
       }, 500);
     }
-  }, [autorun, state.isRunning, state.transactionState, fetchWalletData]);
+  }, [autorun, state.isRunning, state.transactionState]);
 
   useEffect(() => {
     if (state.receipt && state.transactionState === 'fulfilled') {
@@ -262,7 +242,7 @@ function ConsoleContent() {
           )}
 
           <WalletChip
-            label="Buyer Gateway Balance"
+            label="Buyer OmniClaw Balance"
             address={buyerWalletSummary?.address}
             usdc={buyerWalletSummary?.usdcBalance}
             loading={walletLoading}
@@ -273,7 +253,7 @@ function ConsoleContent() {
           <button
             onClick={fetchWalletData}
             className="p-2 rounded-lg hover:bg-[var(--color-bg-hover)] transition-colors"
-            title="Refresh buyer wallet balances and history"
+            title="Refresh buyer wallet balances"
           >
             <RefreshCw className="w-4 h-4 text-[var(--color-text-muted)]" />
           </button>
@@ -296,7 +276,6 @@ function ConsoleContent() {
               onReset={handleReset}
               isRunning={state.isRunning}
               walletSummary={buyerWalletSummary}
-              history={buyerHistory}
               onRefreshWalletData={fetchWalletData}
             />
           </div>

@@ -31,9 +31,9 @@ export const STATE_LABELS: Record<TransactionState, string> = {
   selected: 'Selected',
   inspecting: 'Inspecting',
   policy_checking: 'Policy Check',
-  wallet_ready: 'Gateway Ready',
+  wallet_ready: 'Ready',
   paying: 'Executing Pay',
-  settling: 'Arc Settlement',
+  settling: 'Settlement',
   confirmed: 'Confirmed',
   fulfilled: 'Fulfilled',
   error: 'Error',
@@ -43,19 +43,9 @@ export const STATE_LABELS: Record<TransactionState, string> = {
 export interface Agent {
   id: string;
   name: string;
-  type: 'buyer' | 'seller';
   objective: string;
-  walletId: string;
-  walletType: 'circle_programmable' | 'circle_developer' | 'external';
-  network: string;
-  trustLevel: 'high' | 'medium' | 'low';
-  riskState: 'nominal' | 'elevated' | 'critical';
-  currentStep: string;
   budgetCap: number | null;
   budgetUsed: number;
-  allowedRecipients: string[];
-  policyStatus: 'active' | 'suspended' | 'unconfigured';
-  noRawKeyExposure: boolean;
 }
 
 // --- Seller Service ---
@@ -109,34 +99,6 @@ export interface PolicyCheck {
   constraint?: string;
 }
 
-// --- Wallet Status ---
-export interface WalletStatus {
-  id: string;
-  type: 'circle_programmable' | 'circle_developer' | 'external';
-  address: string;
-  network: string;
-  balance: number;
-  currency: string;
-  state: 'ready' | 'pending' | 'locked' | 'error';
-  configured: boolean;
-  noRawKeyExposure: boolean;
-}
-
-// --- Payment Intent ---
-export interface PaymentIntent {
-  id: string;
-  serviceId: string;
-  amount: number;
-  currency: string;
-  network: string;
-  route: 'gateway' | 'x402_exact' | 'vendor_payment' | 'direct' | 'legacy';
-  recipientEndpoint: string;
-  idempotencyKey: string;
-  policyApproved: boolean;
-  walletReady: boolean;
-  state: TransactionState;
-}
-
 // --- Transaction Receipt ---
 export interface TransactionReceipt {
   id: string;
@@ -149,8 +111,6 @@ export interface TransactionReceipt {
   network: string;
   route: string;
   status: 'pending' | 'confirmed' | 'failed' | 'simulated';
-  proofLink: string | null;
-  arcScanUrl: string | null;
   timestamp: string;
   policyDecisionSummary: string;
   settlementMetadata: Record<string, string>;
@@ -158,21 +118,14 @@ export interface TransactionReceipt {
   payEnvelope?: Record<string, unknown>;
   blockNumber?: string;
   gasUsed?: string;
-  fromAddress?: string;
-  toAddress?: string;
-  senderLabel?: string;
-  recipientLabel?: string;
-  direction?: 'sent' | 'received';
 }
 
 // --- Integration Health ---
 export interface IntegrationHealth {
   omniclaw: OmniClawIntegrationStatus;
-  arc: IntegrationStatus;
   ai: IntegrationStatus;
   buyerWalletAddress?: string | null;
-  gatewayConfigured?: boolean;
-  activePaymentRail?: 'gateway' | 'direct';
+  omniclawConfigured?: boolean;
   warnings?: string[];
 }
 
@@ -198,9 +151,7 @@ export interface AppState {
   selectedService: SellerService | null;
   events: TimelineEvent[];
   agent: Agent;
-  wallet: WalletStatus;
   policyResult: PolicyCheckResult | null;
-  paymentIntent: PaymentIntent | null;
   receipt: TransactionReceipt | null;
   integrationHealth: IntegrationHealth;
   isRunning: boolean;
@@ -208,7 +159,7 @@ export interface AppState {
 }
 
 // --- AI Provider ---
-export type AIProvider = 'featherless' | 'mock';
+export type AIProvider = 'featherless';
 
 export interface AIReasoningResult {
   provider: AIProvider;
@@ -226,48 +177,37 @@ export interface ApiResponse<T> {
   timestamp: string;
 }
 
-export type WalletActor = 'buyer' | 'seller';
-
-export interface WalletBalance {
-  symbol: string;
-  amount: number;
-  rawAmount: string;
-  decimals?: number;
-}
-
-export interface WalletHistoryItem {
-  id: string;
-  txHash: string;
-  token: string;
-  amount: string;
-  direction: 'sent' | 'received' | 'unknown';
-  status: string;
-  timestamp: string;
-  explorerUrl: string | null;
-}
-
 export interface WalletSummary {
-  actor: WalletActor;
   configured: boolean;
   connected: boolean;
-  legacyMode: boolean;
   walletId: string | null;
   address: string | null;
-  addressShort: string | null;
-  blockchain: string;
-  status: string;
-  balances: Record<string, WalletBalance>;
-  apiUsdcBalance?: number;
-  onChainUsdcBalance?: number;
   usdcBalance: number;
   gatewayBalance?: number;
   gatewayOnchainBalance?: number;
-  gatewayBalanceSource?: 'API' | 'On-chain Fallback' | 'Unavailable';
-  gatewayBalanceSyncStatus?: 'in_sync' | 'api_lagging' | 'unavailable';
-  recentTxCount: number;
   budgetCap?: number | null;
-  lastUpdated: string;
   warnings?: string[];
+  gatewayLedger?: {
+    expectedNetwork: string;
+    expectedDomain: number;
+    expectedDomainBalance: string | null;
+    balancesByDomain: Array<{ domain: number; balance: string; depositor: string }>;
+    deposits: Array<{
+      domain: number;
+      status: string;
+      amount: string;
+      transactionHash?: string;
+      blockTimestamp?: string;
+      depositor: string;
+    }>;
+    pendingDepositsCount: number;
+  } | null;
+  sourceStatus?: {
+    omniclawBalanceDetail: 'ok' | 'error';
+    circleBalances: 'ok' | 'error' | 'not_configured';
+    circleDeposits: 'ok' | 'error' | 'not_configured';
+  };
+  circleLedgerError?: string;
 }
 
 export interface LiveArchitectureHealth {

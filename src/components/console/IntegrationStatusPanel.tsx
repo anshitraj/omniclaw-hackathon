@@ -38,6 +38,9 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export default function IntegrationStatusPanel({ health }: IntegrationStatusPanelProps) {
   const [expanded, setExpanded] = useState(false);
+  const warnings = (health.warnings || []).filter(
+    (warning) => warning !== 'OmniClaw API ledger and on-chain available balance differ.',
+  );
 
   return (
     <div className="border-t border-[var(--color-border-subtle)]">
@@ -79,26 +82,21 @@ export default function IntegrationStatusPanel({ health }: IntegrationStatusPane
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">Gateway configured</span>
-                  <StatusIcon value={!!health.gatewayConfigured} />
+                  <span className="text-[var(--color-text-muted)]">OmniClaw configured</span>
+                  <StatusIcon value={!!health.omniclawConfigured} />
                 </div>
-                <Row label="Active Payment Rail" value={health.activePaymentRail || 'unavailable'} />
               </div>
 
               <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">Arc</span>
-                  <StateIcon state={health.arc.state} />
-                </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[var(--color-text-muted)]">AI (Featherless)</span>
                   <StateIcon state={health.ai.state} />
                 </div>
               </div>
 
-              {health.warnings && health.warnings.length > 0 && (
+              {warnings.length > 0 && (
                 <div className="px-2 py-2 rounded bg-[var(--color-accent-amber)]/10 border border-[var(--color-accent-amber)]/25">
-                  {health.warnings.map((warning) => (
+                  {warnings.map((warning) => (
                     <p key={warning} className="text-[10px] text-[var(--color-accent-amber)]">
                       {warning}
                     </p>

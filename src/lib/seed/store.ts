@@ -7,19 +7,44 @@ import type {
   TransactionReceipt,
   IntegrationHealth,
 } from '@/types';
-import { SEED_AGENT, SEED_WALLET, SEED_INTEGRATION_HEALTH } from '@/lib/seed/data';
+
+const DEFAULT_AGENT: AppState['agent'] = {
+  id: 'agent_buyer_001',
+  name: 'OmniClaw Buyer Agent',
+  objective: 'Acquire market intelligence data via paid API endpoints',
+  budgetCap: null,
+  budgetUsed: 0,
+};
+
+const DEFAULT_HEALTH: IntegrationHealth = {
+  omniclaw: {
+    name: 'OmniClaw',
+    state: 'partially_configured',
+    sdkMode: false,
+    serverMode: true,
+    serverAuth: 'disabled',
+    lastChecked: new Date().toISOString(),
+    details: 'Configure OMNICLAW_API_TOKEN and run local OmniClaw server.',
+  },
+  ai: {
+    name: 'AI Provider',
+    state: 'mock_mode',
+    lastChecked: new Date().toISOString(),
+    details: 'Set FEATHERLESS_API_KEY for live AI calls.',
+  },
+  buyerWalletAddress: null,
+  omniclawConfigured: false,
+};
 
 export function createInitialState(existingHealth?: IntegrationHealth): AppState {
-  const health = existingHealth ?? { ...SEED_INTEGRATION_HEALTH };
+  const health = existingHealth ?? { ...DEFAULT_HEALTH };
   return {
     mode: 'integration',
     transactionState: 'idle',
     selectedService: null,
     events: [],
-    agent: { ...SEED_AGENT },
-    wallet: { ...SEED_WALLET },
+    agent: { ...DEFAULT_AGENT },
     policyResult: null,
-    paymentIntent: null,
     receipt: null,
     integrationHealth: health,
     isRunning: false,
@@ -46,7 +71,6 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         selectedService: action.service,
         transactionState: 'selected',
-        agent: { ...state.agent, currentStep: 'service_selected' },
         error: null,
       };
 
@@ -57,7 +81,6 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         transactionState: action.state,
-        agent: { ...state.agent, currentStep: action.state },
       };
 
     case 'SET_POLICY_RESULT':
@@ -70,10 +93,6 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         agent: {
           ...state.agent,
           budgetUsed: state.agent.budgetUsed + (action.receipt.amount || 0),
-        },
-        wallet: {
-          ...state.wallet,
-          balance: state.wallet.balance - (action.receipt.amount || 0),
         },
       };
 

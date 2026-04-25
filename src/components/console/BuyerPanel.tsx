@@ -1,6 +1,5 @@
 ﻿'use client';
 
-import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Bot,
@@ -12,12 +11,9 @@ import {
   KeyRound,
   Gauge,
   RefreshCw,
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
 } from 'lucide-react';
-import type { Agent, TransactionState, WalletHistoryItem, WalletSummary } from '@/types';
-import { formatUSDC, formatTimestamp, truncateHash } from '@/lib/utils';
+import type { Agent, TransactionState, WalletSummary } from '@/types';
+import { formatUSDC, truncateHash } from '@/lib/utils';
 import { STATE_LABELS } from '@/types';
 
 interface BuyerPanelProps {
@@ -29,7 +25,6 @@ interface BuyerPanelProps {
   onReset: () => void;
   isRunning: boolean;
   walletSummary: WalletSummary | null;
-  history: WalletHistoryItem[];
   onRefreshWalletData: () => void;
 }
 
@@ -42,24 +37,8 @@ export default function BuyerPanel({
   onReset,
   isRunning,
   walletSummary,
-  history,
   onRefreshWalletData,
 }: BuyerPanelProps) {
-  const [historyOpen, setHistoryOpen] = useState(true);
-
-  const trustColor =
-    agent.trustLevel === 'high'
-      ? 'var(--color-accent-green)'
-      : agent.trustLevel === 'medium'
-        ? 'var(--color-accent-amber)'
-        : 'var(--color-accent-red)';
-
-  const lastUpdated = useMemo(() => {
-    const updatedAt = walletSummary?.lastUpdated;
-    if (!updatedAt) return 'n/a';
-    return formatTimestamp(updatedAt);
-  }, [walletSummary?.lastUpdated]);
-
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
@@ -74,15 +53,6 @@ export default function BuyerPanel({
         <div>
           <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Buyer Agent</h2>
           <p className="text-xs text-[var(--color-text-muted)]">{agent.name}</p>
-        </div>
-        <div className="ml-auto">
-          <span
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-mono"
-            style={{ backgroundColor: `${trustColor}15`, color: trustColor }}
-          >
-            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: trustColor }} />
-            {agent.trustLevel}
-          </span>
         </div>
       </div>
 
@@ -132,12 +102,12 @@ export default function BuyerPanel({
           <div className="flex items-center justify-between mb-2">
             <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">
               <Wallet className="w-3 h-3 inline mr-1" />
-              Buyer Gateway Balance
+              Buyer OmniClaw Balance
             </label>
             <button
               onClick={onRefreshWalletData}
               className="p-1 rounded hover:bg-[var(--color-bg-hover)] transition-colors"
-              title="Refresh buyer gateway balances"
+              title="Refresh buyer OmniClaw balances"
             >
               <RefreshCw className="w-3 h-3 text-[var(--color-text-muted)]" />
             </button>
@@ -146,65 +116,23 @@ export default function BuyerPanel({
             <Row label="Address" value={walletSummary?.address ? truncateHash(walletSummary.address, 6) : 'Not configured'} mono />
             <Row label="Wallet ID" value={walletSummary?.walletId ? truncateHash(walletSummary.walletId, 6) : 'Not configured'} mono />
             <Row
-              label="Gateway (API ledger)"
+              label="OmniClaw (API ledger)"
               value={formatUSDC(walletSummary?.gatewayBalance ?? walletSummary?.usdcBalance ?? 0)}
               color="var(--color-accent-green)"
             />
             <Row
-              label="Gateway (On-chain)"
-              value={formatUSDC(walletSummary?.gatewayOnchainBalance ?? walletSummary?.onChainUsdcBalance ?? 0)}
+              label="OmniClaw (On-chain)"
+              value={formatUSDC(walletSummary?.gatewayOnchainBalance ?? 0)}
               color="var(--color-accent-blue)"
             />
-            <Row label="Recent Tx" value={String(walletSummary?.recentTxCount || 0)} mono />
-            <Row label="Last Updated" value={lastUpdated} mono />
             {walletSummary?.gatewayBalance !== undefined &&
               walletSummary?.gatewayOnchainBalance !== undefined &&
               Math.abs(walletSummary.gatewayBalance - walletSummary.gatewayOnchainBalance) > 0.000001 && (
                 <p className="text-[10px] text-[var(--color-accent-amber)] mt-1">
-                  API ledger and on-chain gateway balances currently differ.
+                  OmniClaw API ledger and on-chain balances currently differ.
                 </p>
               )}
-            {walletSummary?.legacyMode && (
-              <p className="text-[10px] text-[var(--color-accent-amber)] mt-1">
-                Legacy single-wallet env mode detected.
-              </p>
-            )}
           </div>
-        </div>
-
-        <div className="rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border-subtle)] overflow-hidden">
-          <button
-            onClick={() => setHistoryOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-3 py-2 text-xs text-[var(--color-text-secondary)]"
-          >
-            <span>Buyer Recent Transactions</span>
-            {historyOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
-          {historyOpen && (
-            <div className="px-3 pb-3 space-y-2">
-              {history.length === 0 ? (
-                <p className="text-[11px] text-[var(--color-text-muted)]">No buyer transactions yet.</p>
-              ) : (
-                history.slice(0, 6).map((item) => (
-                  <div key={`${item.id}_${item.timestamp}`} className="rounded-md bg-[var(--color-bg-hover)] px-2 py-1.5 text-[10px] space-y-0.5">
-                    <div className="flex justify-between text-[var(--color-text-secondary)]">
-                      <span>{item.token} {item.amount}</span>
-                      <span>{item.direction}</span>
-                    </div>
-                    <div className="flex justify-between text-[var(--color-text-muted)]">
-                      <span>{truncateHash(item.txHash, 5)}</span>
-                      <span>{item.status}</span>
-                    </div>
-                    {item.explorerUrl && (
-                      <a href={item.explorerUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[var(--color-accent-blue)]">
-                        View on ArcScan <ExternalLink className="w-2.5 h-2.5" />
-                      </a>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
         </div>
 
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-accent-green)]/5 border border-[var(--color-accent-green)]/10">

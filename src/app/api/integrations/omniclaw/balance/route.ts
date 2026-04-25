@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import {
   getBalanceDetail,
+  getGatewayLedgerData,
   getPolicyBudgetCap,
   isOmniClawConfigured,
 } from '@/lib/integrations/omniclaw/client';
@@ -10,8 +11,7 @@ export async function GET() {
     return NextResponse.json(
       {
         success: false,
-        error:
-          'OmniClaw integration not configured. Set OMNICLAW_API_TOKEN and ensure server is running.',
+        error: 'OmniClaw integration not configured. Set OMNICLAW_API_TOKEN and ensure server is running.',
         timestamp: new Date().toISOString(),
       },
       { status: 503 }
@@ -20,6 +20,7 @@ export async function GET() {
 
   try {
     const [detail, budgetCap] = await Promise.all([getBalanceDetail(), getPolicyBudgetCap()]);
+    const { gatewayLedger, circleLedgerError, sourceStatus } = await getGatewayLedgerData(detail);
 
     return NextResponse.json({
       success: true,
@@ -32,12 +33,13 @@ export async function GET() {
         gatewayOnchainBalance: detail.gatewayOnchainBalance,
         blockchain: 'OmniClaw',
         status: detail.status,
-        recentTxCount: 0,
         configured: true,
         connected: true,
         budgetCap,
-        lastUpdated: detail.lastUpdated,
         warnings: detail.warnings,
+        gatewayLedger,
+        sourceStatus,
+        circleLedgerError,
       },
       timestamp: new Date().toISOString(),
     });

@@ -192,7 +192,6 @@ export async function POST(req: Request) {
         events,
         finalState: 'fulfilled',
         mode: 'omniclaw',
-        activePaymentRail: 'gateway',
       },
       timestamp: new Date().toISOString(),
     });

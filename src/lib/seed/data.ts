@@ -1,28 +1,7 @@
 import type {
-  Agent,
   SellerService,
-  WalletStatus,
-  IntegrationHealth,
   PolicyCheckResult,
 } from '@/types';
-
-export const SEED_AGENT: Agent = {
-  id: 'agent_buyer_001',
-  name: 'OmniClaw Buyer Agent',
-  type: 'buyer',
-  objective: 'Acquire market intelligence data via paid API endpoints',
-  walletId: 'wallet_local_buyer',
-  walletType: 'external',
-  network: 'Arc Testnet',
-  trustLevel: 'high',
-  riskState: 'nominal',
-  currentStep: 'awaiting_selection',
-  budgetCap: null,
-  budgetUsed: 0.0,
-  allowedRecipients: ['svc_prime_scan', 'svc_risk_oracle', 'svc_settlement_kit'],
-  policyStatus: 'active',
-  noRawKeyExposure: true,
-};
 
 export const SERVICE_CATALOG: SellerService[] = [
   {
@@ -72,48 +51,9 @@ export const SERVICE_CATALOG: SellerService[] = [
   },
 ];
 
-export const SEED_WALLET: WalletStatus = {
-  id: 'wallet_local_buyer',
-  type: 'external',
-  address: '0x0000000000000000000000000000000000000000',
-  network: 'Arc Testnet',
-  balance: 0.0,
-  currency: 'USDC',
-  state: 'pending',
-  configured: false,
-  noRawKeyExposure: true,
-};
-
-export const SEED_INTEGRATION_HEALTH: IntegrationHealth = {
-  omniclaw: {
-    name: 'OmniClaw',
-    state: 'partially_configured',
-    sdkMode: false,
-    serverMode: true,
-    serverAuth: 'disabled',
-    lastChecked: new Date().toISOString(),
-    details: 'Configure OMNICLAW_API_TOKEN and run local OmniClaw server.',
-  },
-  arc: {
-    name: 'Arc Testnet',
-    state: 'mock_mode',
-    lastChecked: new Date().toISOString(),
-    details: 'Set ARC_RPC_URL for live Arc checks.',
-  },
-  ai: {
-    name: 'AI Provider',
-    state: 'mock_mode',
-    lastChecked: new Date().toISOString(),
-    details: 'Set FEATHERLESS_API_KEY for live AI calls.',
-  },
-  buyerWalletAddress: null,
-  gatewayConfigured: false,
-  activePaymentRail: 'gateway',
-};
-
 export function generatePolicyResult(service: SellerService): PolicyCheckResult {
-  const budgetCapLabel = SEED_AGENT.budgetCap === null ? 'N/A' : SEED_AGENT.budgetCap.toFixed(2);
-  const budgetRemaining = SEED_AGENT.budgetCap === null ? 0 : SEED_AGENT.budgetCap - service.price;
+  const budgetCapLabel = 'N/A';
+  const budgetRemaining = 0;
 
   return {
     approved: true,
@@ -124,11 +64,8 @@ export function generatePolicyResult(service: SellerService): PolicyCheckResult 
         name: 'Budget Cap Check',
         passed: true,
         reason:
-          SEED_AGENT.budgetCap === null
-            ? `${service.price} USDC requested, budget cap provided by OmniClaw policy at runtime`
-            : `${service.price} USDC within ${budgetCapLabel} USDC budget cap`,
-        constraint:
-          SEED_AGENT.budgetCap === null ? 'Runtime policy cap (OmniClaw wallets endpoint)' : `<= ${budgetCapLabel} USDC per session`,
+          `${service.price} USDC requested, budget cap provided by OmniClaw policy at runtime`,
+        constraint: 'Runtime policy cap (OmniClaw wallets endpoint)',
       },
       {
         name: 'Recipient Allowlist',
@@ -139,8 +76,8 @@ export function generatePolicyResult(service: SellerService): PolicyCheckResult 
       {
         name: 'Network Restriction',
         passed: true,
-        reason: 'Arc Testnet is an approved settlement network',
-        constraint: 'Arc Testnet only',
+        reason: 'OmniClaw-managed settlement is enabled for this session',
+        constraint: 'OmniClaw-only settlement',
       },
       {
         name: 'Per-Transaction Limit',
