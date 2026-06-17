@@ -1,14 +1,8 @@
-// ============================================================
-// AI Provider — Featherless Adapter
-// ============================================================
-// Uses Featherless API for buyer agent reasoning.
-// Requires FEATHERLESS_API_KEY environment variable.
-// ============================================================
-
 import type { AIReasoningResult } from '@/types';
 
 const FEATHERLESS_API_KEY = process.env.FEATHERLESS_API_KEY;
-const FEATHERLESS_API_URL = process.env.FEATHERLESS_API_URL || 'https://api.featherless.ai/v1/chat/completions';
+const FEATHERLESS_API_URL =
+  process.env.FEATHERLESS_API_URL || 'https://api.featherless.ai/v1/chat/completions';
 
 export function isConfigured(): boolean {
   return !!FEATHERLESS_API_KEY;
@@ -32,14 +26,17 @@ export async function reason(prompt: string): Promise<AIReasoningResult> {
     }),
   });
 
-  if (!res.ok) throw new Error(`Featherless API failed: ${res.status}`);
+  if (!res.ok) {
+    throw new Error(`Featherless API failed: ${res.status}`);
+  }
+
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content || 'No response';
 
   return {
     provider: 'featherless',
     reasoning: text,
-    confidence: 0.80,
+    confidence: 0.8,
     recommendation: text.slice(0, 200),
     timestamp: new Date().toISOString(),
   };

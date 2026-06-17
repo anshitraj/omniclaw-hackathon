@@ -1,286 +1,138 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot,
+  Store,
   Shield,
-  Wallet,
-  Zap,
-  CheckCircle2,
-  XCircle,
-  Clock,
   Radio,
   Layers,
+  Wallet,
   Activity,
 } from 'lucide-react';
-import type { DemoEvent, TransactionState } from '@/types';
+import type { TimelineEvent } from '@/types';
 import { formatTimestamp } from '@/lib/utils';
 
 interface EventFeedProps {
-  events: DemoEvent[];
-  appMode?: 'live' | 'demo' | 'legacy';
+  events: TimelineEvent[];
 }
 
-/* ── Source → visual config ─────────────────────────────────────────────── */
-
-type EventSource = DemoEvent['source'];
-
-const SOURCE_CONFIG: Record<
-  EventSource,
-  { icon: React.ComponentType<{ className?: string }>; label: string; accent: string; badgeClass: string }
-> = {
-  buyer: {
-    icon: Bot,
-    label: 'BUYER',
-    accent: '#432DD7',
-    badgeClass: 'nb-badge nb-badge-indigo',
-  },
-  policy: {
-    icon: Shield,
-    label: 'POLICY',
-    accent: '#FDC800',
-    badgeClass: 'nb-badge nb-badge-yellow',
-  },
-  wallet: {
-    icon: Wallet,
-    label: 'WALLET',
-    accent: '#0D9488',
-    badgeClass: 'nb-badge nb-badge-teal',
-  },
-  payment: {
-    icon: Radio,
-    label: 'PAYMENT',
-    accent: '#16A34A',
-    badgeClass: 'nb-badge nb-badge-teal',
-  },
-  settlement: {
-    icon: Layers,
-    label: 'SETTLE',
-    accent: '#7B6EF0',
-    badgeClass: 'nb-badge nb-badge-indigo',
-  },
-  system: {
-    icon: Activity,
-    label: 'SYSTEM',
-    accent: '#566680',
-    badgeClass: 'nb-badge nb-badge-muted',
-  },
+const sourceConfig: Record<string, { icon: typeof Bot; color: string; label: string }> = {
+  buyer: { icon: Bot, color: 'var(--color-accent-violet)', label: 'Buyer' },
+  seller: { icon: Store, color: 'var(--color-accent-amber)', label: 'Service' },
+  policy: { icon: Shield, color: 'var(--color-accent-teal)', label: 'Policy' },
+  settlement: { icon: Layers, color: 'var(--color-accent-blue)', label: 'Settlement' },
+  wallet: { icon: Wallet, color: 'var(--color-accent-green)', label: 'Wallet' },
+  system: { icon: Radio, color: 'var(--color-text-muted)', label: 'System' },
 };
 
-/* ── State → status badge ───────────────────────────────────────────────── */
-
-const STATE_BADGE: Record<
-  TransactionState,
-  { label: string; cls: string }
-> = {
-  idle:             { label: 'idle',             cls: 'nb-badge nb-badge-muted' },
-  inspecting:       { label: 'inspecting',       cls: 'nb-badge nb-badge-yellow' },
-  policy_checking:  { label: 'policy_check',     cls: 'nb-badge nb-badge-yellow' },
-  approved:         { label: 'approved',         cls: 'nb-badge nb-badge-teal' },
-  executing:        { label: 'executing',        cls: 'nb-badge nb-badge-indigo' },
-  confirming:       { label: 'confirming',       cls: 'nb-badge nb-badge-indigo' },
-  arc_settling:     { label: 'arc_settling',     cls: 'nb-badge nb-badge-indigo' },
-  fulfilled:        { label: 'fulfilled',        cls: 'nb-badge nb-badge-teal' },
-  failed:           { label: 'failed',           cls: 'nb-badge nb-badge-red' },
-  rejected:         { label: 'rejected',         cls: 'nb-badge nb-badge-red' },
-};
-
-/* ─────────────────────────────────────────────────────────────────────────── */
-
-export default function EventFeed({ events, appMode = 'demo' }: EventFeedProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
+export default function EventFeed({ events }: EventFeedProps) {
+  const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [events.length]);
 
   return (
-    <div className="h-full flex flex-col">
-      {/* ── Panel Header ───────────────────────────────────────────────── */}
-      <div
-        className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b-2"
-        style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'var(--nb-dark-2)' }}
-      >
-        <div className="flex items-center gap-3">
-          {/* Yellow left-bar section label */}
-          <span className="nb-section-label">Agent Event Stream</span>
-          <span className="text-[10px] font-mono" style={{ color: 'var(--color-text-muted)' }}>
-            Real-time policy + settlement log
-          </span>
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--color-border-subtle)]">
+        <div className="w-8 h-8 rounded-lg bg-[var(--color-bg-hover)] flex items-center justify-center">
+          <Activity className="w-4 h-4 text-[var(--color-text-secondary)]" />
         </div>
-
-        <div className="flex items-center gap-2">
-          {events.length > 0 && (
-            <span className="nb-badge nb-badge-muted">
-              {events.length} events
-            </span>
-          )}
-          <span
-            className="flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase"
-            style={{ color: appMode === 'live' ? '#4ADE80' : '#FDC800' }}
-          >
-            <span
-              className="w-1.5 h-1.5 rounded-full animate-pulse-slow"
-              style={{ background: appMode === 'live' ? '#4ADE80' : '#FDC800' }}
-            />
-            {appMode === 'live' ? 'live' : 'demo'}
+        <div>
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Event Feed</h2>
+          <p className="text-xs text-[var(--color-text-muted)]">Live negotiation & execution</p>
+        </div>
+        <div className="ml-auto">
+          <span className="text-xs font-mono text-[var(--color-text-muted)]">
+            {events.length} events
           </span>
         </div>
       </div>
 
-      {/* ── Event List ─────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto">
-        {events.length === 0 ? (
-          /* Empty state */
-          <div className="flex flex-col items-center justify-center h-full gap-4 px-8">
-            <div
-              className="w-12 h-12 flex items-center justify-center border-2"
-              style={{ borderColor: 'rgba(253,200,0,0.2)', background: 'rgba(253,200,0,0.04)' }}
-            >
-              <Activity className="w-5 h-5" style={{ color: 'rgba(253,200,0,0.4)' }} />
+      {/* Events */}
+      <div className="flex-1 overflow-y-auto px-5 py-4">
+        {events.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full text-center px-6">
+            <div className="w-12 h-12 rounded-xl bg-[var(--color-bg-hover)] flex items-center justify-center mb-4">
+              <Radio className="w-5 h-5 text-[var(--color-text-muted)]" />
             </div>
-            <div className="text-center">
-              <p
-                className="text-[11px] font-mono font-bold uppercase tracking-widest mb-1"
-                style={{ color: '#FDC800', opacity: 0.5 }}
-              >
-                Awaiting Execution
-              </p>
-              <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-                Select a vendor service and click Execute Payment
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="p-4 space-y-3">
-            {events.map((event, i) => (
-              <EventCard key={event.id} event={event} index={i} />
-            ))}
-            <div ref={bottomRef} />
+            <p className="text-sm text-[var(--color-text-muted)] mb-1">Awaiting activity</p>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              Select a service from the API catalog panel to begin
+            </p>
           </div>
         )}
-      </div>
 
-      {/* ── Bottom status bar ──────────────────────────────────────────── */}
-      <div
-        className="flex-shrink-0 flex items-center gap-2 px-4 py-2 border-t-2"
-        style={{ borderColor: 'rgba(253,200,0,0.15)', background: 'var(--nb-dark-2)' }}
-      >
-        <Zap className="w-3 h-3" style={{ color: '#FDC800' }} />
-        <span className="text-[10px] font-mono" style={{ color: '#FDC800' }}>
-          {appMode === 'live'
-            ? 'Live Arc Testnet — real Circle Gateway settlement flow'
-            : 'Demo mode — simulated Gateway + Arc settlement flow'}
-        </span>
+        <AnimatePresence initial={false}>
+          {events.map((event) => {
+            const config = sourceConfig[event.source] || sourceConfig.system;
+            const Icon = config.icon;
+
+            return (
+              <motion.div
+                key={event.id}
+                initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="flex gap-3 mb-4 last:mb-0"
+              >
+                {/* Timeline dot */}
+                <div className="flex flex-col items-center pt-0.5">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: `${config.color}15` }}
+                  >
+                    <Icon className="w-3.5 h-3.5" style={{ color: config.color }} />
+                  </div>
+                  <div className="w-px flex-1 mt-1 bg-[var(--color-border-subtle)]" />
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 pb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span
+                      className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                      style={{
+                        backgroundColor: `${config.color}15`,
+                        color: config.color,
+                      }}
+                    >
+                      {config.label}
+                    </span>
+                    <span className="text-[10px] text-[var(--color-text-muted)] font-mono">
+                      {formatTimestamp(event.timestamp)}
+                    </span>
+                  </div>
+                  <h4 className="text-sm font-medium text-[var(--color-text-primary)] mb-0.5">
+                    {event.title}
+                  </h4>
+                  <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                    {event.description}
+                  </p>
+
+                  {/* Metadata */}
+                  {event.metadata && Object.keys(event.metadata).length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {Object.entries(event.metadata).map(([key, value]) => (
+                        <span
+                          key={key}
+                          className="text-[10px] px-2 py-0.5 rounded bg-[var(--color-bg-primary)] border border-[var(--color-border-subtle)] text-[var(--color-text-muted)] font-mono"
+                        >
+                          {key}: {value}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+        <div ref={endRef} />
       </div>
     </div>
-  );
-}
-
-/* ── Individual event card ─────────────────────────────────────────────── */
-
-function EventCard({ event, index }: { event: DemoEvent; index: number }) {
-  const cfg = SOURCE_CONFIG[event.source] ?? SOURCE_CONFIG.system;
-  const Icon = cfg.icon;
-  const stateBadge = STATE_BADGE[event.state] ?? { label: event.state, cls: 'nb-badge nb-badge-muted' };
-
-  const metaEntries = event.metadata ? Object.entries(event.metadata) : [];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.22, delay: index * 0.04, ease: [0.16, 1, 0.3, 1] }}
-    >
-      {/* Neobrutalist card: flat border, left accent bar, hard shadow */}
-      <div
-        className="relative overflow-hidden"
-        style={{
-          background: 'var(--nb-dark-3)',
-          border: '2px solid rgba(255,255,255,0.1)',
-          borderLeft: `4px solid ${cfg.accent}`,
-          boxShadow: `3px 3px 0px ${cfg.accent}22`,
-        }}
-      >
-        {/* Card header row */}
-        <div className="flex items-start justify-between px-4 pt-3 pb-2">
-          <div className="flex items-center gap-2.5">
-            {/* Source icon */}
-            <div
-              className="w-6 h-6 flex items-center justify-center flex-shrink-0"
-              style={{ background: `${cfg.accent}18`, border: `1.5px solid ${cfg.accent}40` }}
-            >
-              <Icon className="w-3 h-3" style={{ color: cfg.accent }} />
-            </div>
-
-            {/* Source badge + state badge */}
-            <span className={cfg.badgeClass}>{cfg.label}</span>
-            <span className={stateBadge.cls}>{stateBadge.label}</span>
-          </div>
-
-          {/* Timestamp */}
-          <span
-            className="text-[10px] font-mono flex-shrink-0 ml-2"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
-            {formatTimestamp(event.timestamp, 'time')}
-          </span>
-        </div>
-
-        {/* Title */}
-        <div className="px-4 pb-1">
-          <h3
-            className="text-sm font-bold leading-snug"
-            style={{ color: 'var(--color-text-primary)', letterSpacing: '-0.01em' }}
-          >
-            {event.title}
-          </h3>
-        </div>
-
-        {/* Description */}
-        <div className="px-4 pb-3">
-          <p
-            className="text-[11px] leading-relaxed"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
-            {event.description}
-          </p>
-        </div>
-
-        {/* Metadata rows — neobrutalist: flat 2-col grid, monospace labels */}
-        {metaEntries.length > 0 && (
-          <div
-            className="mx-4 mb-3 grid gap-px"
-            style={{
-              background: 'rgba(255,255,255,0.06)',
-              border: '1.5px solid rgba(255,255,255,0.08)',
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            }}
-          >
-            {metaEntries.map(([key, val]) => (
-              <div
-                key={key}
-                className="px-2.5 py-1.5"
-                style={{ background: 'var(--nb-dark-2)' }}
-              >
-                <div
-                  className="text-[9px] font-mono font-bold uppercase tracking-widest mb-0.5"
-                  style={{ color: 'var(--color-text-muted)', letterSpacing: '0.1em' }}
-                >
-                  {key}
-                </div>
-                <div
-                  className="text-[11px] font-mono font-semibold truncate"
-                  style={{ color: 'var(--color-text-secondary)' }}
-                >
-                  {String(val)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </motion.div>
   );
 }
